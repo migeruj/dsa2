@@ -97,7 +97,7 @@ jobs:
            # python -c "import tensorflow, torch ; print(tensorflow); print(torch)"
     ########  Test running 
     - name: run_all
-      run: chmod -R 777 . && python core_test_encoder.py train  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
+      run: chmod -R 777 . && python example/test_features train   # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
 
 
 
