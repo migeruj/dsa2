@@ -658,8 +658,181 @@ if __name__ == "__main__":
 
 
 
+def m5_dataset():
+    """
+
+     https://www.kaggle.com/ratan123/m5-forecasting-lightgbm-with-timeseries-splits
 
 
+    """
+    def read_df():
+        print('Reading files...')
+        calendar               = pd.read_csv('/kaggle/input/m5-forecasting-accuracy/calendar.csv')
+        calendar               = reduce_mem_usage(calendar)
+        print('Calendar has {} rows and {} columns'.format(calendar.shape[0], calendar.shape[1]))
+        sell_prices            = pd.read_csv('/kaggle/input/m5-forecasting-accuracy/sell_prices.csv')
+        sell_prices            = reduce_mem_usage(sell_prices)
+        print('Sell prices has {} rows and {} columns'.format(sell_prices.shape[0], sell_prices.shape[1]))
+        sales_train_validation = pd.read_csv('/kaggle/input/m5-forecasting-accuracy/sales_train_validation.csv')
+        print('Sales train validation has {} rows and {} columns'.format(sales_train_validation.shape[0], sales_train_validation.shape[1]))
+        submission             = pd.read_csv('/kaggle/input/m5-forecasting-accuracy/sample_submission.csv')
+        return calendar, sell_prices, sales_train_validation, submission
+
+
+    def melt_and_merge(calendar, sell_prices, sales_train_validation, submission, nrows = 55000000, merge = False):
+        
+        # melt sales df, get it ready for training
+        sales_train_validation = pd.melt(sales_train_validation, id_vars = ['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'], var_name = 'day', value_name = 'demand')
+        print('Melted sales train validation has {} rows and {} columns'.format(sales_train_validation.shape[0], sales_train_validation.shape[1]))
+        sales_train_validation = reduce_mem_usage(sales_train_validation)
+        
+        # seperate test dfframes
+        test1_rows = [row for row in submission['id'] if 'validation' in row]
+        test2_rows = [row for row in submission['id'] if 'evaluation' in row]
+        test1 = submission[submission['id'].isin(test1_rows)]
+        test2 = submission[submission['id'].isin(test2_rows)]
+        
+        # change column names
+        test1.columns = ['id', 'd_1914', 'd_1915', 'd_1916', 'd_1917', 'd_1918', 'd_1919', 'd_1920', 'd_1921', 'd_1922', 'd_1923', 'd_1924', 'd_1925', 'd_1926', 'd_1927', 'd_1928', 'd_1929', 'd_1930', 'd_1931', 
+                          'd_1932', 'd_1933', 'd_1934', 'd_1935', 'd_1936', 'd_1937', 'd_1938', 'd_1939', 'd_1940', 'd_1941']
+        test2.columns = ['id', 'd_1942', 'd_1943', 'd_1944', 'd_1945', 'd_1946', 'd_1947', 'd_1948', 'd_1949', 'd_1950', 'd_1951', 'd_1952', 'd_1953', 'd_1954', 'd_1955', 'd_1956', 'd_1957', 'd_1958', 'd_1959', 
+                          'd_1960', 'd_1961', 'd_1962', 'd_1963', 'd_1964', 'd_1965', 'd_1966', 'd_1967', 'd_1968', 'd_1969']
+        
+        # get product table
+        product = sales_train_validation[['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id']].drop_duplicates()
+        
+        # merge with product table
+        test1 = test1.merge(product, how = 'left', on = 'id')
+        test2 = test2.merge(product, how = 'left', on = 'id')
+        
+        # 
+        test1 = pd.melt(test1, id_vars = ['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'], var_name = 'day', value_name = 'demand')
+        test2 = pd.melt(test2, id_vars = ['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'], var_name = 'day', value_name = 'demand')
+        
+        sales_train_validation['part'] = 'train'
+        test1['part'] = 'test1'
+        test2['part'] = 'test2'
+        
+        df = pd.concat([sales_train_validation, test1, test2], axis = 0)
+        
+        del sales_train_validation, test1, test2
+        
+        # get only a sample for fst training
+        df = df.loc[nrows:]
+        
+        # drop some calendar features
+        calendar.drop(['weekday', 'wday', 'month', 'year'], inplace = True, axis = 1)
+        
+        # delete test2 for now
+        df = df[df['part'] != 'test2']
+        
+        if merge:
+            # notebook crash with the entire dfset (maybee use tensorflow, dask, pyspark xD)
+            df = pd.merge(df, calendar, how = 'left', left_on = ['day'], right_on = ['d'])
+            df.drop(['d', 'day'], inplace = True, axis = 1)
+            # get the sell price df (this feature should be very important)
+            df = df.merge(sell_prices, on = ['store_id', 'item_id', 'wm_yr_wk'], how = 'left')
+            print('Our final dfset to train has {} rows and {} columns'.format(df.shape[0], df.shape[1]))
+        else: 
+            pass
+        
+        gc.collect()
+        
+        return df
+            
+    calendar, sell_prices, sales_train_validation, submission = read_df()
+    df = melt_and_merge(calendar, sell_prices, sales_train_validation, submission, nrows = 27500000, merge = True)
+    gc.collect()
+
+
+    def transform(df):
+        
+        nan_features = ['event_name_1', 'event_type_1', 'event_name_2', 'event_type_2']
+        for feature in nan_features:
+            df[feature].fillna('unknown', inplace = True)
+        
+        encoder = preprocessing.LabelEncoder()
+        df['id_encode'] = encoder.fit_transform(df['id'])
+        
+        cat = ['item_id', 'dept_id', 'cat_id', 'store_id', 'state_id', 'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2']
+        for feature in cat:
+            encoder = preprocessing.LabelEncoder()
+            df[feature] = encoder.fit_transform(df[feature])
+        
+        return df
+
+    df = transform(df)
+    gc.collect()
+    def simple_fe(df):
+        
+        # demand features
+        df['lag_t28'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28))
+        df['lag_t29'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(29))
+        df['lag_t30'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(30))
+        df['rolling_mean_t7'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28).rolling(7).mean())
+        df['rolling_std_t7'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28).rolling(7).std())
+        df['rolling_mean_t30'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28).rolling(30).mean())
+        df['rolling_mean_t90'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28).rolling(90).mean())
+        df['rolling_mean_t180'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28).rolling(180).mean())
+        df['rolling_std_t30'] = df.groupby(['id'])['demand'].transform(lambda x: x.shift(28).rolling(30).std())
+        
+        # price features
+        df['lag_price_t1'] = df.groupby(['id'])['sell_price'].transform(lambda x: x.shift(1))
+        df['price_change_t1'] = (df['lag_price_t1'] - df['sell_price']) / (df['lag_price_t1'])
+        df['rolling_price_max_t365'] = df.groupby(['id'])['sell_price'].transform(lambda x: x.shift(1).rolling(365).max())
+        df['price_change_t365'] = (df['rolling_price_max_t365'] - df['sell_price']) / (df['rolling_price_max_t365'])
+        df['rolling_price_std_t7'] = df.groupby(['id'])['sell_price'].transform(lambda x: x.rolling(7).std())
+        df['rolling_price_std_t30'] = df.groupby(['id'])['sell_price'].transform(lambda x: x.rolling(30).std())
+        df.drop(['rolling_price_max_t365', 'lag_price_t1'], inplace = True, axis = 1)
+        
+        # time features
+        df['date'] = pd.to_datetime(df['date'])
+        df['year'] = df['date'].dt.year
+        df['month'] = df['date'].dt.month
+        df['week'] = df['date'].dt.week
+        df['day'] = df['date'].dt.day
+        df['dayofweek'] = df['date'].dt.dayofweek
+        
+        return df
+
+
+    x = df[df['date'] <= '2016-04-24']
+    y = x.sort_values('date')['demand']
+    test = df[(df['date'] > '2016-04-24')]
+    x = x.sort_values('date')
+    test = test.sort_values('date')
+    del df
+
+    n_fold = 3 #3 for timely purpose of the kernel
+    folds = TimeSeriesSplit(n_splits=n_fold)
+
+    columns = ['item_id', 'dept_id', 'cat_id', 'store_id', 'state_id', 'year', 'month', 'week', 'day', 'dayofweek', 'event_name_1', 'event_type_1', 'event_name_2', 'event_type_2', 
+                'snap_CA', 'snap_TX', 'snap_WI', 'sell_price', 'lag_t28', 'lag_t29', 'lag_t30', 'rolling_mean_t7', 'rolling_std_t7', 'rolling_mean_t30', 'rolling_mean_t90', 
+                'rolling_mean_t180', 'rolling_std_t30', 'price_change_t1', 'price_change_t365', 'rolling_price_std_t7', 'rolling_price_std_t30']
+    splits = folds.split(x, y)
+    y_preds = np.zeros(test.shape[0])
+    y_oof = np.zeros(x.shape[0])
+    feature_importances = pd.dfFrame()
+    feature_importances['feature'] = columns
+    mean_score = []
+    for fold_n, (train_index, valid_index) in enumerate(splits):
+        print('Fold:',fold_n+1)
+        X_train, X_valid = x[columns].iloc[train_index], x[columns].iloc[valid_index]
+        y_train, y_valid = y.iloc[train_index], y.iloc[valid_index]
+        dtrain = lgb.dfset(X_train, label=y_train)
+        dvalid = lgb.dfset(X_valid, label=y_valid)
+        clf = lgb.train(params, dtrain, 2500, valid_sets = [dtrain, dvalid],early_stopping_rounds = 50, verbose_eval=100)
+        feature_importances[f'fold_{fold_n + 1}'] = clf.feature_importance()
+        y_pred_valid = clf.predict(X_valid,num_iteration=clf.best_iteration)
+        y_oof[valid_index] = y_pred_valid
+        val_score = np.sqrt(metrics.mean_squared_error(y_pred_valid, y_valid))
+        print(f'val rmse score is {val_score}')
+        mean_score.append(val_score)
+        y_preds += clf.predict(test[columns], num_iteration=clf.best_iteration)/n_fold
+        del X_train, X_valid, y_train, y_valid
+        gc.collect()
+    print('mean rmse score over folds is',np.mean(mean_score))
+    test['demand'] = y_preds
 
 
 

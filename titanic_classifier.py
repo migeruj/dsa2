@@ -5,6 +5,11 @@
   python titanic_classifier.py  train      --config  config1
   python titanic_classifier.py  predict    --config  config1
 
+python  titanic_classifier.py  data_profile
+python  titanic_classifier.py  preprocess  --nsample 100
+python  titanic_classifier.py  train       --nsample 200
+python  titanic_classifier.py  predict
+
 
 """
 import warnings, copy, os, sys
@@ -17,8 +22,6 @@ THIS_FILEPATH  =  os.path.abspath(__file__)
 
 sys.path.append(root_repo)
 from source.util_feature import save,os_get_function_name
-
-
 
 def global_pars_update(model_dict,  data_name, config_name):
     print("config_name", config_name)
@@ -59,13 +62,11 @@ def global_pars_update(model_dict,  data_name, config_name):
     return model_dict
 
 
-
 ####################################################################################
 ##### Params########################################################################
 config_default   = "config1"    ### name of function which contains data configuration
 
 
-# data_name    = "titanic"     ### in data/input/
 cols_input_type_1 = {
      "coly"   :   "Survived"
     ,"colid"  :   "PassengerId"
@@ -129,20 +130,16 @@ def config1() :
         #### Example of Custom processor
         {"uri":  THIS_FILEPATH + "::pd_col_myfun",   "pars": {}, "cols_family": "colnum",   "cols_out": "col_myfun",  "type": "" },                
 
-
         ],
                }
         },
 
       "compute_pars": { "metric_list": ["accuracy_score","average_precision_score"]
-
                         # ,"mlflow_pars" : {}   ### Not empty --> use mlflow
                       },
 
       "data_pars": { "n_sample" : n_sample,
-
           "download_pars" : None,
-
 
           "cols_input_type" : cols_input_type_1,
           ### family of columns for MODEL  #########################################################
@@ -327,15 +324,6 @@ except : pass
 
 ###########################################################################################################
 ###########################################################################################################
-"""
-python  titanic_classifier.py  data_profile
-python  titanic_classifier.py  preprocess  --nsample 100
-python  titanic_classifier.py  train       --nsample 200
-python  titanic_classifier.py  predict
-
-
-"""
-
 if __name__ == "__main__":
     d = { "data_profile": data_profile,  "train" : train, "predict" : predict, "config" : config_default }
     import fire
