@@ -225,6 +225,11 @@ def preprocess(path_train_X="", path_train_y="", path_pipeline_export="", cols_g
     if len(colid)>0:
         cols_family_all['colid']=colid
     cols_family_all['colX'] = colXy
+
+
+    ####  Cols group for model input  ###########################################################
+
+
     save(colXy,            f'{path_pipeline_export}/colsX.pkl' )
     save(cols_family_all,  f'{path_pipeline_export}/cols_family.pkl' )
 

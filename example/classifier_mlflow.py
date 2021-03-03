@@ -26,7 +26,7 @@ def global_pars_update(model_dict, data_name, config_name):
     dir_data = root_repo + "/data/";
     print("dir_data", dir_data)
 
-    dir_data_url = "https://github.com/arita37/dsa2_data/tree/main/"  #### Remote Data directory
+    dir_data_url = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
 
     m = {}
     m['config_path'] = THIS_FILEPATH

@@ -19,6 +19,7 @@ sys.path.append( os.path.dirname(os.path.abspath(__file__)) + "/")
 root = os.path.abspath(os.getcwd()).replace("\\", "/") + "/"
 print(root)
 
+DEBUG = True
 
 ####################################################################################################
 ####################################################################################################
@@ -31,6 +32,13 @@ def log(*s, n=0, m=0):
     ### Implement pseudo Logging
     print(sjump, sspace, s, sspace, flush=True)
 
+
+def log_debug(*s, n=0, m=0):
+    if DEBUG :
+        sspace = "#" * n
+        sjump = "\n" * m
+        ### Implement pseudo Logging
+        print(sjump, sspace, s, sspace, flush=True)
 
 def save_features(df, name, path):
     if path is not None :
@@ -76,7 +84,7 @@ def map_model(model_name):
 
     ##### Local folder
     model_file = model_name.split(":")[0]
-    if  'optuna' in model_name : model_file = 'model_optuna'
+    if  'optuna' in model_name : model_file = 'optuna_lightgbm'
 
     try :
        ##  'models.model_bayesian_pyro'   'model_widedeep'
@@ -125,6 +133,10 @@ def train(model_dict, dfX, cols_family, post_process_fun):
                           'Xval'   : dfX[colsX].iloc[ival:, :],
                           'yval'   : dfX[coly].iloc[ival:],
                           }
+
+    assert  'cols_model_type2' in data_pars, 'Missing cols_model_type2, split of columns by data type '
+    log_debug(data_pars['cols_model_type2'])
+
 
     log("#### Init, Train ############################################################")
     # from config_model import map_model    
@@ -249,11 +261,14 @@ def run_train(config_name, config_path="source/config_model.py", n_sample=5000,
     model_dict['data_pars']['coly']       = cols['coly']
     model_dict['data_pars']['cols_model'] = sum([  cols[colgroup] for colgroup in model_dict['data_pars']['cols_model_group'] ]   , [])
 
-    #### Require for Deep Neural model: Sparse, Dense   : keras CTR model
-    model_dict['data_pars']['cols_model_type'] = {
-       'coldense' :  sum([  cols[colgroup] for colgroup in [ 'colnum' ] ]   , []), 
-       'colsparse':  sum([  cols[colgroup] for colgroup in model_dict['data_pars']['cols_model_group'] if colgroup != 'colnum' ]   , [])
-    }
+
+    #### Col Group to model input : Sparse, continuous, .... (ie Neural Network
+    ## 'coldense' = [ 'colnum' ]     'colsparse' = ['colcat' ]
+    ##
+    model_dict['data_pars']['cols_model_type2'] = {}
+    for colg, colg_list in model_dict['data_pars'].get('cols_model_type', {}).items() :
+        model_dict['data_pars']['cols_model_type2'][colg] = sum([  cols[colgroup] for colgroup in colg_list ]   , [])
+
 
    
     log("#### Train model: #############################################################")

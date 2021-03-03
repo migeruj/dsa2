@@ -26,39 +26,53 @@ from source import util_feature
 
 ####################################################################################
 ###### Path ########################################################################
-print( os.getcwd())
-root = os.path.abspath(os.getcwd()).replace("\\", "/") + "/"
-print(root)
+root_repo      =  os.path.abspath(os.getcwd()).replace("\\", "/") + "/"     ; print(root_repo)
+THIS_FILEPATH  =  os.path.abspath(__file__)
 
-dir_data  = os.path.abspath( root + "/data/" ) + "/"
-dir_data  = dir_data.replace("\\", "/")
-print(dir_data)
+sys.path.append(root_repo)
+from source.util_feature import save,os_get_function_name
 
 
 def global_pars_update(model_dict,  data_name, config_name):
+    print("config_name", config_name)
+    dir_data  = root_repo + "/data/"  ; print("dir_data", dir_data)
+
     m                      = {}
-    model_name             = model_dict['model_pars']['model_class']
-    m['config_path'] = root + f"/{config_file}"
-    m['config_name']       = config_name
+    m["config_path"]       = THIS_FILEPATH
+    m["config_name"]       = config_name
 
-    m['path_data_train']   = f'data/input/{data_name}/train/'
-    m['path_data_test']    = f'data/input/{data_name}/test/'
+    #### peoprocess input path
+    m["path_data_preprocess"] = dir_data + f"/input/{data_name}/train/"
 
-    m['path_model']        = f'data/output/{data_name}/{config_name}/'
-    m['path_output_pred']  = f'data/output/{data_name}/pred_{config_name}/'
-    m['n_sample']          = model_dict['data_pars'].get('n_sample', 5000)
+    #### train input path
+    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
+    m["path_data_train"]      = dir_data_url + f"/input/{data_name}/train/"
+    m["path_data_test"]       = dir_data_url + f"/input/{data_name}/test/"
+    #m["path_data_val"]       = dir_data + f"/input/{data_name}/test/"
 
-    model_dict[ 'global_pars'] = m
+    #### train output path
+    m["path_train_output"]    = dir_data + f"/output/{data_name}/{config_name}/"
+    m["path_train_model"]     = dir_data + f"/output/{data_name}/{config_name}/model/"
+    m["path_features_store"]  = dir_data + f"/output/{data_name}/{config_name}/features_store/"
+    m["path_pipeline"]        = dir_data + f"/output/{data_name}/{config_name}/pipeline/"
+
+
+    #### predict  input path
+    m["path_pred_data"]       = dir_data + f"/input/{data_name}/test/"
+    m["path_pred_pipeline"]   = dir_data + f"/output/{data_name}/{config_name}/pipeline/"
+    m["path_pred_model"]      = dir_data + f"/output/{data_name}/{config_name}/model/"
+
+    #### predict  output path
+    m["path_pred_output"]     = dir_data + f"/output/{data_name}/pred_{config_name}/"
+
+    #####  Generic
+    m["n_sample"]             = model_dict["data_pars"].get("n_sample", 5000)
+
+    model_dict[ "global_pars"] = m
     return model_dict
 
 
-def os_get_function_name():
-    import sys
-    return sys._getframe(1).f_code.co_name
-
-
 ####################################################################################
-config_file    = "regress_boston.py"
 config_default = 'boston_lightgbm'
 
 

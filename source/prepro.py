@@ -47,7 +47,7 @@ import util_feature
 
 ####################################################################################################
 ####################################################################################################
-def pd_col_atemplate(df=None, col=None, pars={}):
+def pd_col_atemplate(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
     Example of custom Processor
     Used at prediction time
@@ -94,7 +94,7 @@ def pd_col_atemplate(df=None, col=None, pars={}):
 
 ###########################################################################################
 ##### Label processing   ##################################################################
-def pd_coly_clean(df, col, pars):
+def pd_coly_clean(df: pd.DataFrame, col: list=None, pars: dict=None):
     path_features_store = pars['path_features_store']
     # path_pipeline_export = pars['path_pipeline_export']
     coly = col=[0]
@@ -109,7 +109,7 @@ def pd_coly_clean(df, col, pars):
     return df,coly
 
 
-def pd_coly(df, col, pars):
+def pd_coly(df: pd.DataFrame, col: list=None, pars: dict=None):
     ##### Filtering / cleaning rows :   ################
     coly=col
     def isfloat(x):
@@ -155,7 +155,7 @@ def pd_colnum_fill_na_median(df, col, pars):
         df[quant_col].fillna((df[quant_col].median()), inplace=True)
 
 
-def pd_colnum_normalize(df, col, pars):
+def pd_colnum_normalize(df: pd.DataFrame, col: list=None, pars: dict=None):
     log("### colnum normalize  ###############################################################")
     from util_feature import pd_colnum_normalize
     colnum = col
@@ -170,7 +170,7 @@ def pd_colnum_normalize(df, col, pars):
     return dfnum_norm, colnum_norm
 
 
-def pd_colnum_quantile_norm(df, col, pars={}):
+def pd_colnum_quantile_norm(df: pd.DataFrame, col: list=None, pars: dict=None):
   """
      colnum normalization by quantile
   """
@@ -253,7 +253,7 @@ def pd_colnum_quantile_norm(df, col, pars={}):
   return dfnew,  col_pars
 
 
-def pd_colnum_bin(df, col, pars):
+def pd_colnum_bin(df: pd.DataFrame, col: list=None, pars: dict=None):
     from util_feature import  pd_colnum_tocat
 
     path_pipeline  = pars.get('path_pipeline', False)
@@ -287,7 +287,7 @@ def pd_colnum_bin(df, col, pars):
     return dfnum_bin, col_pars
 
 
-def pd_colnum_binto_onehot(df, col=None, pars=None):
+def pd_colnum_binto_onehot(df: pd.DataFrame, col: list=None, pars: dict=None):
     assert isinstance(col, list) and isinstance(df, pd.DataFrame)
 
     dfnum_bin     = df[col]
@@ -317,7 +317,7 @@ def pd_colnum_binto_onehot(df, col=None, pars=None):
 
 
 
-def pd_colcat_to_onehot(df, col=None, pars=None):
+def pd_colcat_to_onehot(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
 
     """
@@ -362,7 +362,7 @@ def pd_colcat_to_onehot(df, col=None, pars=None):
 
 
 
-def pd_colcat_bin(df, col=None, pars=None):
+def pd_colcat_bin(df: pd.DataFrame, col: list=None, pars: dict=None):
     # dfbum_bin = df[col]
     path_pipeline  = pars.get('path_pipeline', False)
     colcat_bin_map = load(f'{path_pipeline}/colcat_bin_map.pkl') if  path_pipeline else None
@@ -395,7 +395,7 @@ def pd_colcat_bin(df, col=None, pars=None):
 
 
 
-def pd_colcross(df, col, pars):
+def pd_colcross(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
      cross_feature_new =  feat1 X feat2  (pair feature)
 
@@ -451,7 +451,7 @@ def pd_colcross(df, col, pars):
 
 
 
-def pd_coldate(df, col, pars):
+def pd_coldate(df: pd.DataFrame, col: list=None, pars: dict=None):
     log("##### Coldate processing   ##########################################")
     from utils import util_date
     coldate = col
@@ -474,7 +474,7 @@ def pd_coldate(df, col, pars):
     return dfdate, col_pars
 
 
-def pd_colcat_encoder_generic(df, col, pars):
+def pd_colcat_encoder_generic(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
         Create a Class or decorator
         https://pypi.org/project/category-encoders/
@@ -532,7 +532,7 @@ def pd_colcat_encoder_generic(df, col, pars):
 
 
 
-def pd_colcat_minhash(df, col, pars):
+def pd_colcat_minhash(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
        MinHash Algo for category
        https://booking.ai/dont-be-tricked-by-the-hashing-trick-192a6aae3087
@@ -591,7 +591,7 @@ def save_json(js, pfile, mode='a'):
         json.dump(js, fp)
 
 
-def pd_col_genetic_transform(df=None, col=None, pars=None):
+def pd_col_genetic_transform(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
         Find Symbolic formulae for faeture engineering
 

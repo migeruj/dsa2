@@ -559,29 +559,44 @@ def test_all_files():
         # log_remote_push()
         # time.sleep(1)
 
+
 ##############################################################################################  
-def test_all_data():
+def test_all_example():
     # log_info_repo(arg)
     log("os.getcwd", os.getcwd())
     import time, glob
     
     block_list =  []  # [ "core_run.py", "core_test.py"  ]
-    flist = glob.glob("example/*.py")      
+    flist = glob.glob("example/*.py")
+
+    flist = flist + glob.glob("example/*/*.py")
     flist = [ t for t in flist if t not in block_list ]  
 
-    ## Block list
+    ## Used list
+    log_file = "2>&1 | tee   log_check.txt"
     path = os.getcwd()
     path = path.replace("\\", "//")
-    test_list = [f"python {path}/example/" + t  + "   train"  for t in flist]
+    test_list = [f"python {path}/{t}   train   {log_file}"  for t in flist]
     log("Used", test_list)
 
     for cmd in test_list:
         log_separator()
         log( cmd)
         os.system(cmd)
-        # log_remote_push()
-        # time.sleep(1)
-    
+
+        ### Find error
+        try :
+          with open("log_check.txt", mode='r') as fp :
+            lines = fp.readlines()
+
+          ss = "\n".join(lines)
+
+          if "Traceback (most recent call last)" in ss  or "Errno" in ss :
+             raise Exception("error in file ", cmd,    )  
+          # log_remote_push()
+          # time.sleep(1)
+        except :
+           pass    
 
 
 

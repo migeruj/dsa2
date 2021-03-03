@@ -1,69 +1,58 @@
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330
 # -*- coding: utf-8 -*-
 """
-    python classifier_airline.py train
-	python classifier_airline.py predict
-"""
-from core_run import predict
-from core_run import train
-from core_run import preprocess
-from source import util_feature
-import warnings
-import copy
-import os
-import sys
-warnings.filterwarnings('ignore')
+    python example/classifier/classifier_airline.py train
 
+
+"""
+import warnings, copy, os, sys
+warnings.filterwarnings('ignore')
 
 ####################################################################################
 ###### Path ########################################################################
-config_file = os.path.basename(__file__)
+root_repo      =  os.path.abspath(os.getcwd()).replace("\\", "/") + "/"     ; print(root_repo)
+THIS_FILEPATH  =  os.path.abspath(__file__)
 
-print(os.getcwd())
-root = os.path.abspath(os.getcwd()).replace("\\", "/") + "/"
-dir_data = os.path.abspath(root + "/data/") + "/"
-dir_data = dir_data.replace("\\", "/")
-print(root, dir_data)
-
-
-def os_get_function_name():
-    import sys
-    return sys._getframe(1).f_code.co_name
+sys.path.append(root_repo)
+from source.util_feature import save,os_get_function_name
 
 
 def global_pars_update(model_dict,  data_name, config_name):
-    m = {}
-    m['config_path'] = root + f"/{config_file}"
-    m['config_name'] = config_name
+    print("config_name", config_name)
+    dir_data  = root_repo + "/data/"  ; print("dir_data", dir_data)
 
-    # run_Preoprocess ONLY
-    m['path_data_preprocess'] = root + f'/data/input/{data_name}/train/'
+    m                      = {}
+    m['config_path']       = THIS_FILEPATH
+    m['config_name']       = config_name
 
-    # run_Train  ONLY
-    m['path_data_train'] = root + f'/data/input/{data_name}/train/'
-    m['path_data_test'] = root + f'/data/input/{data_name}/test/'
-    #m['path_data_val']    = root + f'/data/input/{data_name}/test/'
-    m['path_train_output'] = root + f'/data/output/{data_name}/{config_name}/'
-    m['path_train_model'] = root + \
-        f'/data/output/{data_name}/{config_name}/model/'
-    m['path_features_store'] = root + \
-        f'/data/output/{data_name}/{config_name}/features_store/'
-    m['path_pipeline'] = root + \
-        f'/data/output/{data_name}/{config_name}/pipeline/'
+    #### peoprocess input path
+    m['path_data_preprocess'] = dir_data + f'/input/{data_name}/train/'
 
-    # Prediction
-    m['path_pred_data'] = root + f'/data/input/{data_name}/test/'
-    m['path_pred_pipeline'] = root + \
-        f'/data/output/{data_name}/{config_name}/pipeline/'
-    m['path_pred_model'] = root + \
-        f'/data/output/{data_name}/{config_name}/model/'
-    m['path_pred_output'] = root + \
-        f'/data/output/{data_name}/pred_{config_name}/'
+    #### train input path
+    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
+    m["path_data_train"]      = dir_data_url + f"/input/{data_name}/train/"
+    m["path_data_test"]       = dir_data_url + f"/input/{data_name}/test/"
+    #m["path_data_val"]       = dir_data + f"/input/{data_name}/test/"
 
-    # Generic
-    m['n_sample'] = model_dict['data_pars'].get('n_sample', 5000)
+    #### train output path
+    m['path_train_output']    = dir_data + f'/output/{data_name}/{config_name}/'
+    m['path_train_model']     = dir_data + f'/output/{data_name}/{config_name}/model/'
+    m['path_features_store']  = dir_data + f'/output/{data_name}/{config_name}/features_store/'
+    m['path_pipeline']        = dir_data + f'/output/{data_name}/{config_name}/pipeline/'
 
-    model_dict['global_pars'] = m
+
+    #### predict  input path
+    m['path_pred_data']       = dir_data + f'/input/{data_name}/test/'
+    m['path_pred_pipeline']   = dir_data + f'/output/{data_name}/{config_name}/pipeline/'
+    m['path_pred_model']      = dir_data + f'/output/{data_name}/{config_name}/model/'
+
+    #### predict  output path
+    m['path_pred_output']     = dir_data + f'/output/{data_name}/pred_{config_name}/'
+
+    #####  Generic
+    m['n_sample']             = model_dict['data_pars'].get('n_sample', 5000)
+
+    model_dict[ 'global_pars'] = m
     return model_dict
 
 
@@ -97,7 +86,7 @@ def airline_lightgbm(path_model_out=""):
         'model_pars': {'boosting_type': 'gbdt', 'class_weight': None, 'colsample_bytree': 1.0,
                      'importance_type': 'split', 'learning_rate': 0.001, 'max_depth': -1,
                      'min_child_samples': 20, 'min_child_weight': 0.001, 'min_split_gain': 0,
-                     'n_estimators': 5000,
+                     'n_estimators': 5,
                      'n_jobs': -1, 'num_leaves': 31, 'objective': None,
                      'random_state': None, 'reg_alpha': 0, 'reg_lambda': 0.0, 'silent': True,
                      'subsample': 1.0, 'subsample_for_bin': 200000, 'subsample_freq': 0
@@ -160,46 +149,52 @@ def airline_lightgbm(path_model_out=""):
     return model_dict
 
 
+
+
 #####################################################################################
 ########## Profile data #############################################################
-def data_profile(path_data_train="", path_model="", n_sample=5000):
-    from source.run_feature_profile import run_profile
-    run_profile(path_data=path_data_train,
-                path_output=path_model + "/profile/",
-                n_sample=n_sample,
-                )
+#### def data_profile(path_data="", path_output="", n_sample= 5000):
+from core_run import data_profile
 
 
-###################################################################################
+
+
+ ###################################################################################
 ########## Preprocess #############################################################
-# def preprocess(config='', nsample=1000):
+### def preprocess(config='', nsample=1000):
+from core_run import preprocess
 
 
 ##################################################################################
 ########## Train #################################################################
+## def train(config_uri='titanic_classifier.py::titanic_lightgbm'):
+from core_run import train
+
 
 
 ###################################################################################
 ######### Check data ##############################################################
 def check():
-    pass
+   pass
+
+
 
 
 ####################################################################################
 ####### Inference ##################################################################
-# predict(config='', nsample=10000)
+# def  predict(config='', nsample=10000)
+from core_run import predict
+
+
+
 
 
 ###########################################################################################################
 ###########################################################################################################
-"""
-python  classifier_income.py  data_profile
-python  classifier_income.py  preprocess
-python  classifier_income.py  train   --nsample 1000
-python  classifier_income.py  check
-python  classifier_income.py  predict
-python  classifier_income.py  run_all
-"""
 if __name__ == "__main__":
+
     import fire
     fire.Fire()
+
+
+

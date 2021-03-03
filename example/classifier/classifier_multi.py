@@ -6,8 +6,9 @@ https://www.kaggle.com/tapioca/multiclass-lightgbm
 https://medium.com/@nitin9809/lightgbm-binary-classification-multi-class-classification-regression-using-python-4f22032b36a2
 
 
-  python classifier_multi.py  train
-  python classifier_multi.py  predict
+  python example/classifier/classifier_multi.py  train
+
+  python example/classifier/classifier_multi.py  predict
 
 
 """
@@ -34,9 +35,10 @@ def global_pars_update(model_dict,  data_name, config_name):
     m['path_data_preprocess'] = dir_data + f'/input/{data_name}/train/'
 
     #### train input path
-    m['path_data_train']      = dir_data + f'/input/{data_name}/train/'
-    m['path_data_test']       = dir_data + f'/input/{data_name}/test/'
-    #m['path_data_val']       = dir_data + f'/input/{data_name}/test/'
+    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
+    m["path_data_train"]      = dir_data_url + f"/input/{data_name}/train/"
+    m["path_data_test"]       = dir_data_url + f"/input/{data_name}/test/"
+    #m["path_data_val"]       = dir_data + f"/input/{data_name}/test/"
 
     #### train output path
     m['path_train_output']    = dir_data + f'/output/{data_name}/{config_name}/'
@@ -157,45 +159,23 @@ def multi_lightgbm() :
 
 #####################################################################################
 ########## Profile data #############################################################
-def data_profile(path_data_train="", path_model="", n_sample= 5000):
-   from source.run_feature_profile import run_profile
-   run_profile(path_data   = path_data_train,
-               path_output = path_model + "/profile/",
-               n_sample    = n_sample,
-              )
+#### def data_profile(path_data="", path_output="", n_sample= 5000):
+from core_run import data_profile
 
 
-###################################################################################
+
+
+ ###################################################################################
 ########## Preprocess #############################################################
-def preprocess(config=None, nsample=None):
-    config_name  = config  if config is not None else config_default
-    mdict        = globals()[config_name]()
-    m            = mdict['global_pars']
-    print(mdict)
-
-    from source import run_preprocess
-    run_preprocess.run_preprocess(config_name       =  config_name,
-                                  config_path       =  m['config_path'],
-                                  n_sample          =  nsample if nsample is not None else m['n_sample'],
-
-                                  ### Optonal
-                                  mode              =  'run_preprocess')
+### def preprocess(config='', nsample=1000):
+from core_run import preprocess
 
 
 ##################################################################################
 ########## Train #################################################################
-def train(config=None, nsample=None):
+## def train(config_uri='titanic_classifier.py::titanic_lightgbm'):
+from core_run import train
 
-    config_name  = config  if config is not None else config_default
-    mdict        = globals()[config_name]()
-    m            = mdict['global_pars']
-    print(mdict)
-
-    from source import run_train
-    run_train.run_train(config_name       =  config_name,
-                        config_path       =  m['config_path'],
-                        n_sample          =  nsample if nsample is not None else m['n_sample'],
-                        )
 
 
 ###################################################################################
@@ -205,37 +185,15 @@ def check():
 
 
 
-
 ####################################################################################
 ####### Inference ##################################################################
-def predict(config=None, nsample=None):
-    config_name  = config  if config is not None else config_default
-    mdict        = globals()[config_name]()
-    m            = mdict['global_pars']
-
-
-    from source import run_inference
-    run_inference.run_predict(config_name = config_name,
-                              config_path =  m['config_path'],
-                              n_sample    = nsample if nsample is not None else m['n_sample'],
-
-                              #### Optional
-                              path_data   = m['path_pred_data'],
-                              path_output = m['path_pred_output'],
-                              model_dict  = None
-                              )
+# def  predict(config='', nsample=10000)
+from core_run import predict
 
 
 
 ###########################################################################################################
 ###########################################################################################################
-"""
-python  classifier_multi.py  data_profile
-python  classifier_multi.py  preprocess
-python  classifier_multi.py  train
-python  classifier_multi.py  check
-python  classifier_multi.py  predict
-"""
 if __name__ == "__main__":
     import fire
     fire.Fire()

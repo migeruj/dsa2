@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  python example/classifier/classifier_adfraud.py  data_profile  --path_data_train data/input/adfraud/train/  --path_out zlog/
-  python example/classifier/test_classifier.py  train
-  python example/classifier/test_classifier.py  predict
+  python example/classifier/classifier_adfraud.py  train
 
 
 
@@ -21,12 +19,10 @@ ip,app,device,os,channel,click_time,attributed_time,is_attributed
 import warnings, copy, os, sys
 warnings.filterwarnings('ignore')
 
-
 ####################################################################################
 ###### Path ########################################################################
 root_repo      =  os.path.abspath(os.getcwd()).replace("\\", "/") + "/"     ; print(root_repo)
 THIS_FILEPATH  =  os.path.abspath(__file__)
-
 
 sys.path.append(root_repo)
 from source.util_feature import save,os_get_function_name
@@ -44,9 +40,10 @@ def global_pars_update(model_dict,  data_name, config_name):
     m['path_data_preprocess'] = dir_data + f'/input/{data_name}/train/'
 
     #### train input path
-    m['path_data_train']      = dir_data + f'/input/{data_name}/train/'
-    m['path_data_test']       = dir_data + f'/input/{data_name}/test/'
-    #m['path_data_val']       = dir_data + f'/input/{data_name}/test/'
+    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
+    m["path_data_train"]      = dir_data_url + f"/input/{data_name}/train/"
+    m["path_data_test"]       = dir_data_url + f"/input/{data_name}/test/"
+    #m["path_data_val"]       = dir_data + f"/input/{data_name}/test/"
 
     #### train output path
     m['path_train_output']    = dir_data + f'/output/{data_name}/{config_name}/'
@@ -262,6 +259,6 @@ if __name__ == "__main__":
 
     import fire
     fire.Fire()
-    
+
 
 

@@ -1,0 +1,129 @@
+name: test_example
+
+###  https://github.com/arita37/awesome-actions#static-analysis
+
+on:
+  push:
+    branches:
+      - main
+      - multi
+
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+   
+    - name: Set up Python 3.6.*
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.6.*
+      
+    - name: Install pipenv
+      uses: dschep/install-pipenv-action@v1
+      
+
+    ##### Log Start  ######################################################
+
+    #- name: ssh_gen
+    #  uses: webfactory/ssh-agent@v0.2.0
+      #with:
+      #  ssh-private-key: ${{ secrets.GIT_RSA }}
+                
+    - name: log_start
+      run: |
+           ls .
+           # cd /home/runner/work/mlmodels/  && git clone git@github.com:arita37/mlmodels_store.git  &&  ls && pwd
+           # cd /home/runner/work/mlmodels/mlmodels/
+
+    ########################################################################
+                
+
+    # - name: log_start
+    #  run: |
+    #       cd /home/runner/work/mlmodels/  && git clone git@github.com:arita37/mlmodels_store.git  &&  ls && pwd
+    #       cd /home/runner/work/mlmodels/mlmodels/
+            
+
+    #- uses: actions/cache@v1
+    #  id: cache
+    #  with:
+    #    path: ~/.cache/pip
+    #    key: ${{ runner.os }}-pip-${{ hashFiles('**/install/requirements.txt') }}
+    #    restore-keys: |
+    #      ${{ runner.os }}-pip-
+   
+
+
+    - name: Cache pipenv virtualenv
+      id: cache-pipenv
+      uses: actions/cache@v1
+      with:
+        path: /opt/hostedtoolcache/Python/
+        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/install/py36.txt') }}
+
+
+          
+
+    - name: Install numpy
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run: pip install numpy==1.18.2   pillow==6.2.1  scipy
+      
+
+    - name: Install repo requirements  1
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run: |
+           pip install -r   install/py36.txt
+           pip install pyod==0.8.5
+
+    - name: Install repo requirements   2
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run:  |
+        ls .
+        #pip install -r install/requirements_fake.txt
+
+    #- name: Install repo
+    #  run: pip install -e . -r install/py36.txt  --no-deps
+
+
+
+
+    # - name: log_start
+    #  run: ml_test --do log_remote_start
+
+
+    - name: test_import
+      run: |
+           python -c "import core_run;   print(core_run)"
+           python -c "import os, numpy ; print(os)"
+           # python -c "import tensorflow, torch ; print(tensorflow); print(torch)"
+
+
+    ########  Test running 
+    - name: run_all
+      run: chmod -R 777 . && python core_test.py  test_all_example   # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_import/log_optim.py
+
+
+    #- name: ml_test_function
+    #  run: ml_test --do test_functions    2>&1 | tee  cd /home/runner/work/mlmodels/mlmodels_store/log_import/log_functions.py
+
+
+
+
+    #- name: ml_test
+    #  run: ml_test
+      
+        
+
+    #- name: log_gitcommit
+    #  run: |
+    #       ml_test --do log_remote_push --name test_fast_linux
+
+# https://ianwhitestone.work/AWS-Serverless-Deployments-With-Github-Actions/
+#
+#
+#
+#

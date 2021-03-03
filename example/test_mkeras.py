@@ -33,7 +33,7 @@ def global_pars_update(model_dict,  data_name, config_name):
     m["path_data_preprocess"] = dir_data + f"/input/{data_name}/train/"
 
     #### train input path
-    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/main/"  #### Remote Data directory
+    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
     m["path_data_train"]      = dir_data_url + f"/input/{data_name}/train/"
     m["path_data_test"]       = dir_data_url + f"/input/{data_name}/test/"
     #m["path_data_val"]       = dir_data + f"/input/{data_name}/test/"

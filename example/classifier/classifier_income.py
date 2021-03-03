@@ -1,10 +1,8 @@
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330
 # -*- coding: utf-8 -*-
 """
-	python  classifier_income.py  data_profile
-	python  classifier_income.py  preprocess  --nsample 32560
-	python  classifier_income.py  train       --nsample 32560
-	python  classifier_income.py  check
+    python  example/classifier/classifier_income.py  train       --nsample 32560
+
 	python  classifier_income.py  predict
 
 
@@ -35,9 +33,10 @@ def global_pars_update(model_dict,  data_name, config_name):
     m['path_data_preprocess'] = dir_data + f'/input/{data_name}/train/'
 
     #### train input path
-    m['path_data_train']      = dir_data + f'/input/{data_name}/train/'
-    m['path_data_test']       = dir_data + f'/input/{data_name}/test/'
-    #m['path_data_val']       = dir_data + f'/input/{data_name}/test/'
+    dir_data_url              = "https://github.com/arita37/dsa2_data/tree/master/"  #### Remote Data directory
+    m["path_data_train"]      = dir_data_url + f"/input/{data_name}/train/"
+    m["path_data_test"]       = dir_data_url + f"/input/{data_name}/test/"
+    #m["path_data_val"]       = dir_data + f"/input/{data_name}/test/"
 
     #### train output path
     m['path_train_output']    = dir_data + f'/output/{data_name}/{config_name}/'
@@ -103,7 +102,7 @@ def income_status_lightgbm(path_model_out="") :
         ,'model_pars' : {'boosting_type':'gbdt', 'class_weight':None, 'colsample_bytree':1.0,
 						'importance_type':'split', 'learning_rate':0.001, 'max_depth':-1,
 						'min_child_samples':20, 'min_child_weight':0.001, 'min_split_gain':0,
-						'n_estimators': 5000,
+						'n_estimators': 5,
                          'n_jobs':-1, 'num_leaves':31, 'objective':None,
 						'random_state':None, 'reg_alpha':0, 'reg_lambda':0.0, 'silent':True,
 						'subsample':1.0, 'subsample_for_bin':200000, 'subsample_freq':0
@@ -179,23 +178,21 @@ def income_status_lightgbm(path_model_out="") :
 
 #####################################################################################
 ########## Profile data #############################################################
-def data_profile(path_data_train="", path_model="", n_sample= 5000):
-   from source.run_feature_profile import run_profile
-   run_profile(path_data   = path_data_train,
-               path_output = path_model + "/profile/",
-               n_sample    = n_sample,
-              )
+#### def data_profile(path_data="", path_output="", n_sample= 5000):
+from core_run import data_profile
 
 
-###################################################################################
+
+
+ ###################################################################################
 ########## Preprocess #############################################################
 ### def preprocess(config='', nsample=1000):
 from core_run import preprocess
 
 
-
 ##################################################################################
 ########## Train #################################################################
+## def train(config_uri='titanic_classifier.py::titanic_lightgbm'):
 from core_run import train
 
 
@@ -207,28 +204,16 @@ def check():
 
 
 
-
 ####################################################################################
 ####### Inference ##################################################################
-# predict(config='', nsample=10000)
+# def  predict(config='', nsample=10000)
 from core_run import predict
 
 
 
-
-
 ###########################################################################################################
 ###########################################################################################################
-"""
-python  classifier_income.py  data_profile
-python  classifier_income.py  preprocess
-python  classifier_income.py  train   --nsample 1000
-python  classifier_income.py  check
-python  classifier_income.py  predict
-
-"""
 if __name__ == "__main__":
     import fire
     fire.Fire()
-
 
