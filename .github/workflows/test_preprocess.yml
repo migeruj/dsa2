@@ -84,8 +84,6 @@ jobs:
     #  run: pip install -e . -r install/py36.txt  --no-deps
 
 
-
-
     # - name: log_start
     #  run: ml_test --do log_remote_start
 
@@ -95,12 +93,36 @@ jobs:
            python -c "import core_run;   print(core_run)"
            python -c "import os, numpy ; print(os)"
            # python -c "import tensorflow, torch ; print(tensorflow); print(torch)"
+
     ########  Test running 
-    - name: run_all
+    - name: run_cat_num
       run: |
         chmod -R 777 . 
-        python core_test_encoder.py train  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
-    # python example/test_features train  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
+        python example/test_features.py train --config config1  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
+    # python core_test_encoder.py train  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
+
+
+    ########  Test running 
+    - name: run_sampler_text
+      run: |
+        chmod -R 777 . 
+        python example/test_features.py train  --config config2  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
+
+
+
+    ########  Test running 
+    - name: run_sampler
+      run: |
+        chmod -R 777 . 
+        python example/test_features.py train  --config config3  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
+
+
+
+    ########  Test running 
+    - name: run_tseries
+      run: |
+        chmod -R 777 . 
+        python example/test_features.py train  --config config4  # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_dsa2/log_encoder.py
 
 
 

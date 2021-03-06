@@ -1,22 +1,9 @@
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330
 # -*- coding: utf-8 -*-
 """
-You can put hardcode here, specific to titatinic dataet
-All in one file config
   python regress_house.py  train    > zlog/log-house.txt 2>&1
-!  python regress_house.py  check
-!  python regress_house.py  predict
-
-
-# 'pipe_list'  :
-    'filter',
-    'label',
-    'dfnum_bin'
-    'dfnum_hot'
-    'dfcat_bin'
-    'dfcat_hot'
-    'dfcross_hot'
-
+  python regress_house.py  check
+  python regress_house.py  predict
 
 
 

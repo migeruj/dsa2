@@ -104,19 +104,19 @@ class logger_class(object):
         if verbose: print(self.config)
         d = self.config['logger_config']
         self.logger     = logger_setup( **d )
-        self.level_max  = self.config.get('verbosity_level', 1)
+        self.level_max  = self.config.get('verbosity', 1)
 
 
     def load_config(self, config_file_path=None) :
         try :
             if config_file_path is None :
-                config_file_path = 'config/log.yaml'
+                config_file_path = 'config.yaml'
 
             with open(config_file_path, 'r') as f:
                 return yaml.load(f)
 
         except Exception as e :
-            return {}  ## Default parameters
+            return {'logger_config': {}, 'verbosity': 1}  ## Default parameters
 
 
     def log(self,*s, level=1) :

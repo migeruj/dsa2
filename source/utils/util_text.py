@@ -258,7 +258,7 @@ def pd_coltext_tdidf(df, coltext, word_tokeep=None, word_minfreq=1, return_val="
         # print(len(word_tokeep))
 
     # Calculate td-idf vector
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(stop_words='english' ,vocabulary=word_tokeep)
     vectorizer.fit(word_tokeep)
     v = vectorizer.transform(df[coltext])
     v = v.toarray()

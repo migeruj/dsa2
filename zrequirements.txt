@@ -21,10 +21,12 @@ numba==0.50.1
 #############3# Optional 
 # pyro-ppl
 # pyod
-#tensorflow_text>=2.0.0rc0
+tensorflow_text>=2.0.0rc0
 #sdv==0.6.1
 mlflow==1.13.1
 mljar-supervised
 #explainerdashboard
 # petastorm
 pandas-profiling
+category_encoders
+imblearn

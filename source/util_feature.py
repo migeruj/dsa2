@@ -887,7 +887,14 @@ def pd_colcat_mapping(df, colname):
 
 
 def pd_colcat_toint(dfref, colname, colcat_map=None, suffix=None):
+
+    ### to ensure dataframe
+    colname = [colname] if isinstance(colname, str) else colname
+
     df = dfref[colname]
+    # if colname is single value df will be series type not a dataframe so we convert it to dataframe to be sure it is a dataframe type
+    df = pd.DataFrame(df)
+
     suffix = "" if suffix is None else suffix
     colname_new = []
 
@@ -902,7 +909,11 @@ def pd_colcat_toint(dfref, colname, colcat_map=None, suffix=None):
         return df[colname_new], colcat_map
 
     colcat_map = {}
+    
+    # old: for col in colname:
+    # update: for col in [colname] >> if colname is just single value it will loop through string not the list, so we convert to list before looping
     for col in colname:
+        
         colcat_map[col]           = {}
         df[col + suffix], label   = df[col].factorize()
         colcat_map[col]["decode"] = {i: t for i, t in enumerate(list(label))}
@@ -910,6 +921,7 @@ def pd_colcat_toint(dfref, colname, colcat_map=None, suffix=None):
         colname_new.append(col + suffix)
 
     return df[colname_new], colcat_map
+
 
 
 

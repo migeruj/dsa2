@@ -56,7 +56,8 @@ def pd_coltext_clean( df, col, stopwords= None , pars=None):
 
     def coltext_remove_stopwords(text, stopwords=None, sep=" "):
         tokens = text.split(sep)
-        tokens = [t.strip() for t in tokens if t.strip() not in stopwords]
+        if stopwords != None:
+            tokens = [t.strip() for t in tokens if t.strip() not in stopwords]
         return " ".join(tokens)
 
     # list1 = []
@@ -234,11 +235,12 @@ def pd_coltext_universal_google(df, col, pars={}):
        save_features(dfall, 'dftext_embed', pars['path_features_store'])
        save(coltext_embed,  pars['path_pipeline_export'] + "/{prefix}.pkl" )
        save(pars_model,     pars['path_pipeline_export'] + "/{prefix}_pars.pkl" )
-       save(model,          pars['path_pipeline_export'] + "/{prefix}_model.pkl" )
-       model_uri = pars['path_pipeline_export'] + "/{prefix}_model.pkl"
+       # save(model,          pars['path_pipeline_export'] + "/{prefix}_model.pkl" )
+       # model_uri = pars['path_pipeline_export'] + "/{prefix}_model.pkl"
 
 
-    col_pars = {'model_uri' :  model_uri, 'pars': pars_model}
+    # col_pars = {'model_uri' :  model_uri, 'pars': pars_model}
+    col_pars = {'model_uri' :  url , 'pars': pars_model} # model_uri
     col_pars['cols_new']      = {
        'coltext_universal_google' :  coltext_embed ### list
     }

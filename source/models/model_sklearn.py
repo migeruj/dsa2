@@ -85,6 +85,9 @@ def log(*s):
     print(*s, flush=True)
 
 
+def log3(*s):
+    print(*s, flush=True)
+
 ####################################################################################################
 global model, session
 
@@ -245,7 +248,13 @@ def get_dataset(data_pars=None, task_type="train", **kw):
       "file" :
     """
     # log(data_pars)
-    data_type = data_pars.get('type', 'ram')
+    data_type  = data_pars.get('type', 'ram')
+    cols_type  = data_pars.get('cols_model_type2', {})   #### Split input by Sparse, Continous
+    cols_model = data_pars['cols_model']
+    coly       = data_pars['coly']
+
+    log3("Cols Type:", cols_type)
+
     if data_type == "ram":
         if task_type == "predict":
             d = data_pars[task_type]

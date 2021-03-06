@@ -1,0 +1,8 @@
+
+
+verbosity: 2   #### 2,3,4
+
+logger_config :
+   formatter: 'FORMATTER_0'
+
+

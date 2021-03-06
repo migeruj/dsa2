@@ -188,18 +188,23 @@ def preprocess(path_train_X="", path_train_y="", path_pipeline_export="", cols_g
            pars['colid']           = colid
            pars['colcross_single'] = cols_group.get('colcross', [])
 
-       elif col_type == 'add_coly':
-           log( 'add_coly genetic', cols_group['coly'] )
-           pars['coly'] = cols_group['coly']
-           pars['dfy']  = dfi_all[ 'coly' ]  ### Transformed dfy
+       #elif col_type == 'add_coly':
+       #    log( 'add_coly genetic', cols_group['coly'] )
+       pars['coly'] = cols_group['coly']
+       pars['dfy']  = dfi_all[ 'coly' ]  ### add dfy by default
 
-       ### Input columns or prevously Computed Columns ( colnum_bin )
+       ### Input columns or prevously Computed Columns ( colnum_bin ), prevent duplicates
        cols_list  = cols_group[cols_name] if cols_name in cols_group else list(dfi_all[cols_name].columns)
        df_        = df[ cols_list]        if cols_name in cols_group else dfi_all[cols_name]
        #cols_list  = list(dfi_all[cols_name].columns)
        #df_        = dfi_all[cols_name]
 
        dfi, col_pars = pipe_fun(df_, cols_list, pars= pars)
+
+       ## Check Index are matching for Later JOIN: Issues with Sampler, re-index !!!!!!
+       if 'sampler' not in pipe_i['uri'] :
+          dfi.index = df_.index
+          # assert dfi.index == df_.index, "df.index are not matching"
 
 
        ### Concatenate colnum, colnum_bin into cols_family_all , dfi_all  ###########################
@@ -311,8 +316,7 @@ def preprocess_inference(df, path_pipeline="data/pipeline/pipe_01/", preprocess_
            pars['dfcat_hot']       = dfi_all['colcat_onehot']
            pars['colid']           = colid
            pars['colcross_single'] = cols_group.get('colcross', [])
-       elif col_type == 'add_coly':
-           pass
+
 
        dfi, col_pars             = pipe_fun(df_, cols_list, pars= pars)
 

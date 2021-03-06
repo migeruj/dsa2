@@ -129,9 +129,6 @@ def bank_lightgbm():
                                    {'uri': 'source/prepro.py::pd_colcross', 'pars': {}, 'cols_family': 'colcross',
                                     'cols_out': 'colcross_pair', 'type': 'cross'},
 
-                                   #### Example of Custom processor
-                                   {'uri': THIS_FILEPATH + '::pd_col_myfun', 'pars': {}, 'cols_family': 'colnum',
-                                    'cols_out': 'col_myfun', 'type': ''},
 
                                ],
                                }
@@ -166,39 +163,6 @@ def bank_lightgbm():
     ##### Filling Global parameters    ############################################################
     model_dict = global_pars_update(model_dict, data_name, config_name=os_get_function_name())
     return model_dict
-
-
-def pd_col_myfun(df=None, col=None, pars={}):
-    """
-         Example of custom Processor
-    """
-    from source.util_feature import save, load
-    prefix = 'col_myfun`'
-    if 'path_pipeline' in pars:  #### Inference time LOAD previous pars
-        prepro = load(pars['path_pipeline'] + f"/{prefix}_model.pkl")
-        pars = load(pars['path_pipeline'] + f"/{prefix}_pars.pkl")
-        pars = {} if pars is None else pars
-    #### Do something #################################################################
-    df_new = df[col]  ### Do nithi
-    df_new.columns = [col + "_myfun" for col in df.columns]
-    cols_new = list(df_new.columns)
-
-    prepro = None
-    pars_new = None
-
-    ###################################################################################
-    if 'path_features_store' in pars and 'path_pipeline_export' in pars:
-        save(prepro, pars['path_pipeline_export'] + f"/{prefix}_model.pkl")
-        save(cols_new, pars['path_pipeline_export'] + f"/{prefix}.pkl")
-        save(pars_new, pars['path_pipeline_export'] + f"/{prefix}_pars.pkl")
-
-    col_pars = {'prefix': prefix, 'path': pars.get('path_pipeline_export', pars.get('path_pipeline', None))}
-    col_pars['cols_new'] = {
-        'col_myfun': cols_new  ### list
-    }
-    return df_new, col_pars
-
-
 
 
 

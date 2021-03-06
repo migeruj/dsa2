@@ -1,17 +1,13 @@
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330
 # -*- coding: utf-8 -*-
 """
-You can put hardcode here, specific to titatinic dataet
-All in one file config
   python regress_boston.py  train
   python regress_boston.py  check
   python regress_boston.py  predict
 
-
 https://causalnex.readthedocs.io/en/stable/causalnex.structure.DAGRegressor.html
 
 https://www.splunk.com/en_us/blog/platform/causal-inference-determining-influence-in-messy-data.html
-
 
 
 """
@@ -20,7 +16,6 @@ warnings.filterwarnings('ignore')
 import os, sys, pandas as pd, copy, pdb
 #####################################################################################
 from source import util_feature
-
 
 
 
@@ -182,9 +177,6 @@ def boston_lightgbm(path_model_out="") :
     return model_dict
 
 
-
-
-
 def boston_causalnex(path_model_out="") :
     """
        Contains all needed informations for Light GBM Classifier model,
@@ -247,8 +239,7 @@ def boston_causalnex(path_model_out="") :
           #  "colnum", "colnum_bin", "colnum_onehot", "colnum_binmap",  #### Colnum columns
           #  "colcat", "colcat_bin", "colcat_onehot", "colcat_bin_map",  #### colcat columns
           #  'colcross_single_onehot_select', "colcross_pair_onehot",  'colcross_pair',  #### colcross columns
-          #  'coldate',
-          #  'coltext',
+          #  'coldate',  'coltext',
           'cols_model_group': [ 'colnum_bin',
                                 'colcat_bin',
                                 # 'coltext',

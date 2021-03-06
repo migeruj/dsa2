@@ -1,4 +1,4 @@
-name: test_benchmark
+name: test_example
 
 ###  https://github.com/arita37/awesome-actions#static-analysis
 
@@ -106,7 +106,7 @@ jobs:
     ########  Test running 
     - name: run_all
       run: |
-         chmod -R 777 . &&  python core_test.py  test_all_data
+         chmod -R 777 . &&  python core_test.py  test_all_example
          # chmod -R 777 . && ztest/run_full.sh   # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_import/log_optim.py
 
 

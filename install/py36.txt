@@ -21,9 +21,11 @@ sympy
 #numba==0.48.0
 # fastparquet
 nltk
+category_encoders
+imblearn
 
 ##########################################
-# tensorflow_text>=2.0.0rc0
+tensorflow_text>=2.0.0rc0
 # simpleneighbors[annoy]
 # cython
 #cycler==0.10.0

@@ -83,10 +83,6 @@ class Model(object):
             self.model = None
         else:
             model_class = model_pars['model_class']  # globals() removed
-
-            n_wide = calc( data_pars)
-            n_deep = calc( data_pars)
-
             self.model  = Modelcustom(**model_pars['model_pars'])
             if VERBOSE: log(model_class, self.model)
             self.model.summary()
@@ -225,17 +221,17 @@ def get_dataset(data_pars=None, task_type="train", **kw):
     data_type = data_pars.get('type', 'ram')
 
     if data_type == "ram":
-        cols_input_formodel = ['cols_wide_input', 'cols_deep_input', 'cols_deep_input' ]
+        cols_input_groupname = ['cols_wide_input', 'cols_deep_input', 'cols_deep_input' ]
         ### dict  colgroup ---> list of colname
-        cols_type     = data_pars['cols_model_type2']
+        cols_input_group     = data_pars['cols_model_type2']
 
         if task_type == "predict":
             d = data_pars[task_type]
             Xtrain       = d["X"]
 
             Xtuple_train = []
-            for cols_groupname in cols_input_formodel :
-                cols_i = cols_type[cols_groupname]
+            for cols_groupname in cols_input_groupname :
+                cols_i = cols_input_group[cols_groupname]
                 Xtuple_train.append( Xtrain[cols_i] )
 
             return Xtuple_train
@@ -243,11 +239,11 @@ def get_dataset(data_pars=None, task_type="train", **kw):
 
         if task_type == "eval":
             d = data_pars[task_type]
-            Xtrain, ytrain  = d["X"], d["y"]
+            Xtrain, ytrain  = d["Xtrain"], d["ytrain"]
 
             Xtuple_train = []
-            for cols_groupname in cols_input_formodel :
-                cols_i = cols_type[cols_groupname]
+            for cols_groupname in cols_input_groupname :
+                cols_i = cols_input_group[cols_groupname]
                 Xtuple_train.append( Xtrain[cols_i] )
 
             return Xtuple_train, ytrain
@@ -257,18 +253,16 @@ def get_dataset(data_pars=None, task_type="train", **kw):
             d = data_pars[task_type]
             Xtrain, ytrain, Xtest, ytest  = d["Xtrain"], d["ytrain"], d["Xtest"], d["ytest"]
 
-            cols_input_formodel = ['cols_wide_input', 'cols_deep_input', 'cols_deep_input' ]
-            cols_type           = data_pars['cols_model_type2']   ##3 Sparse, Continuous
             ### dict  colgroup ---> list of df
             Xtuple_train = []
-            for cols_groupname in cols_input_formodel :
-                cols_i = cols_type[cols_groupname]
-                Xtuple_train.append( np.array(Xtrain[cols_i] ))
+            for cols_groupname in cols_input_groupname :
+                cols_i = cols_input_group[cols_groupname]
+                Xtuple_train.append( Xtrain[cols_i] )
 
             Xtuple_test = []
-            for cols_groupname in cols_input_formodel :
-                cols_i = cols_type[cols_groupname]
-                Xtuple_test.append( np.array(Xtest[cols_i] ))
+            for cols_groupname in cols_input_groupname :
+                cols_i = cols_input_group[cols_groupname]
+                Xtuple_test.append( Xtest[cols_i] )
 
             return Xtuple_train, ytrain, Xtuple_test, ytest
 
@@ -283,7 +277,9 @@ def get_dataset(data_pars=None, task_type="train", **kw):
 def test(config=''):
     """
         Group of columns for the input model
-           cols_input_group = [ ]
+           cols_input_group = [
+
+          ]
           for cols in cols_input_group,
 
 
@@ -292,7 +288,7 @@ def test(config=''):
     """
     global model, session
 
-    X = pd.DataFrame( np.random.rand(100,30), columns= [ 'col_' +str(i) for i in range(30)] )
+    X = pd.DataFrame( np.random.rand(100,30), columns= [ 'col_' +str(i) for i in range(20)] )
     y = pd.DataFrame( np.random.binomial(n=1, p=0.5, size=[100]), columns = ['coly'] )
 
 
@@ -300,80 +296,56 @@ def test(config=''):
     X_train, X_valid, y_train, y_valid         = train_test_split(X_train_full, y_train_full, random_state=2021, stratify=y_train_full)
 
     early_stopping = EarlyStopping(monitor='loss', patience=3)
-    model_ckpt     = ModelCheckpoint(filepath='/home/hari/model_.pth', save_best_only=True, monitor='loss')
+    model_ckpt     = ModelCheckpoint(filepath='', save_best_only=True, monitor='loss')
     callbacks      = [early_stopping, model_ckpt]
 
     n_features      = X_train.shape[1]  # number of features
     n_wide_features = 20
     n_deep_features = n_features - n_wide_features
 
-
-    #############################################################
     ##### Generate column actual names from
-    colnum = [ 'col_0', 'col_1']
-    colcat = [ 'col_2', 'col_3']
-
-    cols_input_type_1 = {
-        'colnum' : colnum,
-        'colcat' : colcat
-    }
-
-    ###### Keras has 1 tuple input    ###########################
     colg_input = {
-      'cols_wide_input':   ['colnum', 'colcat' ],
-      'cols_deep_input':   ['colnum', 'colcat' ],
+      'cols_wide_input':   ['colnum', 'colcat_onehot' ],
+      'cols_deep_input':   ['colnum', 'colcat_onehot' ],
     }
 
 
-    cols_model_type2= {}
+    cols_family = {
+        'colnum' : [],
+        'colcat' : []
+    }
+
+    cols_model_input_group = {}
     for colg, colist in colg_input.items() :
-        cols_model_type2[colg] = []
+        cols_model_input_group[colg] = []
         for colg_i in colist :
-          cols_model_type2[colg].extend( cols_input_type_1[colg_i] )
+          cols_model_input_group[colg].extend( cols_family[colg_i] )
 
-    print(cols_model_type2)
-
-
-    ##################################################################################
-    # model_pars = {'model_class': 'WideAndDeep',
-    #               'model_pars': {'n_wide_cross': n_wide_features,
-    #                              'n_wide':       n_deep_features},
-    #              }
 
     model_pars = {'model_class': 'WideAndDeep',
-                  'model_pars': {'n_wide_cross': len(cols_model_type2['cols_wide_input']),
-                                 'n_wide':       len(cols_model_type2['cols_deep_input'])},
+                  'model_pars': {'n_wide_cross': n_wide_features,
+                                 'n_wide':       n_deep_features},
                  }
 
-    n_sample = 100
-    data_pars = {'n_sample': n_sample,
-                  'cols_input_type': cols_input_type_1,
-
-                  'cols_model_group': ['colnum',
-                                       'colcat',
-                                       # 'coltext',
-                                       # 'coldate',
-                                       # 'colcross_pair'
-                                       ],
-
-                  'cols_model_type2' : cols_model_type2
-
-
-        ### Filter data rows   #######################3############################
-        , 'filter_pars': {'ymax': 2, 'ymin': -1}
-                  }
-    data_pars['train'] ={'Xtrain': X_train,
+    data_pars = {'train': {'Xtrain': X_train,
                            'ytrain': y_train,
                            'Xtest': X_test,
-                           'ytest': y_test}
-    data_pars['eval'] =  {'X': X_valid,
-                          'y': y_valid}
-    data_pars['predict'] = {'X': X_valid}
+                           'ytest': y_test},
+                 'eval': {'X': X_valid,
+                          'y': y_valid},
+                 'predict': {'X': X_valid},
+
+
+                 'cols_model_input_group' :cols_model_input_group,
+
+                 'n_features': n_features,
+                 'n_wide_features': n_wide_features,
+                 'n_deep_features': n_deep_features,
+                }
 
     compute_pars = { 'compute_pars' : { 'epochs': 2,
                     'callbacks': callbacks} }
 
-    ######## Run ###########################################
     test_helper(model_pars, data_pars, compute_pars)
 
 
