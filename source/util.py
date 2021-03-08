@@ -29,8 +29,91 @@ class dict2(object):
     def __init__(self, d):
         self.__dict__ = d
 
-        
-        
+
+
+from collections.abc import Mapping
+class dictLazy(Mapping):
+    """       .parquet --->  disk retrieval in pandas
+         hdfs     --->  disk retrieval in pandas
+        # Lazy dict allows storing function and argument pairs when initializing the dictionary,
+        # it calculates the value only when fetching it.
+        # In this examole, if the key starts with '#', it would accept a (function, args) tuple as value and
+        # returns the calculated result when fetching the values.
+
+        # Initialize a lazy dict
+        d = ictLasy(
+            {
+                '#1': (lambda x: x + 1, 0),
+                '#2': (lambda x: x + 2, 0),
+                '#3': (lambda x: x + 3, 0)
+            }
+        )
+        A collection of files, nrows
+
+# Example of iterator=True. Note iterator=False by default.
+reader = pd.read_csv('some_data.csv', iterator=True)
+reader.get_chunk(100)
+This gets the first 100 rows, running through a loop gets the next 100 rows and so on.
+
+import pandas as pd
+from glob import glob
+files = sorted(glob('dat.parquet/part*'))
+
+data = pd.read_parquet(files[0],engine='fastparquet')
+for f in files[1:]:
+    data = pd.concat([data,pd.read_parquet(f,engine='fastparquet')])
+
+    # Save into 50,000 row chunks,
+# so we should get file saved into two chunks.
+
+df.to_parquet('/users/nick/desktop/test.parquet',
+              engine='fastparquet',
+              row_group_offsets=50000)
+
+    # Then we have to read it in using the `fastparquet`
+    # library itself (there's no way to do this directly from
+    # pandas I'm afraid):
+
+    from fastparquet import ParquetFile
+    pf = ParquetFile('/users/nick/desktop/test.parquet')
+
+    # Iterates over row groups
+    for rg in pf.iter_row_groups():
+        print(rg)
+
+
+
+    """
+    def __init__(self, *args, **kw):
+        self._raw_dict = dict(*args, **kw)
+
+    def __getitem__(self, key):
+        if key.startswith('#'):
+            path = self._raw_dict.__getitem__(key)
+
+            if 'hdfs:' in path :
+                valx = load_hdfs(path)
+
+            elif '.parquet' in path :
+                pass
+
+            elif 'spark:'  in path  :
+                pass
+            return valx
+        else :
+            return self._raw_dict.__getitem__(key)
+
+    def __iter__(self):
+        return iter(self._raw_dict)
+
+    def __len__(self):
+        return len(self._raw_dict)
+
+
+
+
+
+
         
 #############################################################################################        
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330

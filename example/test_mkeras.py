@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  python mkeras.py  train    > zlog/log_titanic_train.txt 2>&1
+  python example/mkeras.py  train    --config config1
   python mkeras.py  predict  > zlog/log_titanic_predict.txt 2>&1
 
+  Bug on dimenson
 
 """
 import warnings, copy, os, sys
@@ -13,12 +14,9 @@ warnings.filterwarnings("ignore")
 ####################################################################################
 ###### Path ########################################################################
 root_repo      =  os.path.abspath(os.getcwd()).replace("\\", "/") + "/"     ; print(root_repo)
-THIS_FILEPATH  =  os.path.abspath(__file__) 
-
+THIS_FILEPATH  =  os.path.abspath(__file__)
 sys.path.append(root_repo)
-from source.util_feature import save,os_get_function_name
-
-
+from source.util_feature import os_get_function_name
 
 
 def global_pars_update(model_dict,  data_name, config_name):
@@ -70,8 +68,8 @@ config_default   = "config1"    ### name of function which contains data configu
 cols_input_type_1 = {
      "coly"   :   "Survived"
     ,"colid"  :   "PassengerId"
-    ,"colcat" :   ["Sex", "Embarked" ]
-    ,"colnum" :   ["Pclass", "Age","SibSp", "Parch","Fare"]
+    ,"colcat" :   ["Sex", "Embarked", "Pclass", ]
+    ,"colnum" :   [ "Age","SibSp", "Parch","Fare"]
     ,"coltext" :  []
     ,"coldate" :  []
     ,"colcross" : [  ]
@@ -81,16 +79,10 @@ cols_input_type_1 = {
 ####################################################################################
 def config1() :
     """
-       ONE SINGLE DICT Contains all needed informations for
-       used for titanic classification task
+       ONE SINGLE DICT Contains all needed informations for  used for titanic classification task
     """
     data_name    = "titanic"         ### in data/input/
-
-    # model_class  = "source/models/model_sklearn.py::LightGBM"  ### ACTUAL Class name for
-
     model_class  = "source/models/keras_widedeep.py"  ### ACTUAL Class name for
-
-    
     n_sample     = 1000
 
     def post_process_fun(y):   ### After prediction is done
@@ -99,87 +91,54 @@ def config1() :
     def pre_process_fun(y):    ### Before the prediction is done
         return  int(y)
 
-
     model_dict = {"model_pars": {
         ### LightGBM API model   #######################################
          "model_class": model_class
         ,"model_pars" : {
 
-
-                      'model_name': name,
-                      'linear_feat_col'    : linear_feat_col,
-                      'dnn_feat_col'       : dnn_feat_col,
-                      'behavior_feat_list' : behavior_feat_list,
-                      'region_feat_col'    : region_feat_col,
-                      'base_feat_col'      : base_feat_col,
-                      'task'                  : task,
-
-
-                      
-                      'model_pars': {'optimizer': opt,
-                                     'loss': loss,
-                                     'metrics': metrics}
-                     },
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        }
+         }
 
         , "post_process_fun" : post_process_fun                    ### After prediction  ##########################################
         , "pre_process_pars" : {"y_norm_fun" :  pre_process_fun ,  ### Before training  ##########################
 
-
         ### Pipeline for data processing ##############################
         "pipe_list": [
-        #### coly target prorcessing
-        {"uri": "source/prepro.py::pd_coly",                 "pars": {}, "cols_family": "coly",       "cols_out": "coly",           "type": "coly"         },
+          {"uri": "source/prepro.py::pd_coly",                 "pars": {}, "cols_family": "coly",       "cols_out": "coly",           "type": "coly"         },
+
+          {"uri": "source/prepro.py::pd_colnum_bin",           "pars": {}, "cols_family": "colnum",     "cols_out": "colnum_bin",     "type": ""             },
+          {"uri": "source/prepro.py::pd_colnum_binto_onehot",  "pars": {}, "cols_family": "colnum_bin", "cols_out": "colnum_onehot",  "type": ""             },
 
 
-        {"uri": "source/prepro.py::pd_colnum_bin",           "pars": {}, "cols_family": "colnum",     "cols_out": "colnum_bin",     "type": ""             },
+          {"uri": "source/prepro.py::pd_colcat_bin",           "pars": {}, "cols_family": "colcat",     "cols_out": "colcat_bin",     "type": ""             },
+          {"uri": "source/prepro.py::pd_colcat_to_onehot",     "pars": {}, "cols_family": "colcat_bin", "cols_out": "colcat_onehot",  "type": ""             },
 
-        #### catcol INTO integer
-        {"uri": "source/prepro.py::pd_colcat_bin",           "pars": {}, "cols_family": "colcat",     "cols_out": "colcat_bin",     "type": ""             },
 
+          #### neeed to 0-1 Normalize the input
+          # {"uri": "source/prepro.py::pd_colcat_bin",           "pars": {}, "cols_family": "colcat",     "cols_out": "colcat_bin",     "type": ""             },
 
         ],
-               }
-        },
+        }},
 
-      "compute_pars": { "metric_list": ["accuracy_score","average_precision_score"]
+      "compute_pars": { "metric_list":  ["accuracy_score","average_precision_score"],
+                        'compute_pars': {'epochs': 1 },
 
-                        ,"mlflow_pars" : {}   ### Not empty --> use mlflow
+                        'path_checkpoint' : "ztmp_checkpoint/"
                       },
 
       "data_pars": { "n_sample" : n_sample,
-
           "download_pars" : None,
 
           ### family of columns for raw input data  #########################################################
           "cols_input_type" : cols_input_type_1,
 
-
           ### family of columns used for model input  #########################################################
-          "cols_model_group": [ "colnum",       ### numerical continuous   
-                                "colcat_bin",   ###  category
-
-
+          "cols_model_group": [ "colnum_onehot",  "colcat_onehot",
                               ]
+
+         ,'cols_model_type' : {
+              'cols_cross_input':  [ "colcat_onehot", ],
+              'cols_deep_input':   ['colnum_onehot',  ],
+          }
 
           ### Filter data rows   ##################################################################
          ,"filter_pars": { "ymax" : 2 ,"ymin" : -1 }
@@ -194,48 +153,18 @@ def config1() :
 
 
 
+
+
 ###################################################################################
 ########## Preprocess #############################################################
 ### def preprocess(config="", nsample=1000):
 from core_run import preprocess
 
-"""
-def preprocess(config=None, nsample=None):
-    config_name  = config  if config is not None else config_default
-    mdict        = globals()[config_name]()
-    m            = mdict["global_pars"]
-    print(mdict)
-
-    from source import run_preprocess
-    run_preprocess.run_preprocess(config_name   =  config_name,
-                                  config_path   =  m["config_path"],
-                                  n_sample      =  nsample if nsample is not None else m["n_sample"],
-
-                                  ### Optonal
-                                  mode          =  "run_preprocess")
-"""
-
-
 
 ##################################################################################
 ########## Train #################################################################
+# def train(config=None, nsample=None):
 from core_run import train
-"""
-def train(config=None, nsample=None):
-
-    config_name  = config  if config is not None else config_default
-    mdict        = globals()[config_name]()
-    m            = mdict["global_pars"]
-    print(mdict)
-    
-    from source import run_train
-    run_train.run_train(config_name       =  config_name,
-                        config_path       =  m["config_path"],
-                        n_sample          =  nsample if nsample is not None else m["n_sample"]
-                        )
-"""
-
-
 
 
 ####################################################################################
@@ -243,24 +172,6 @@ def train(config=None, nsample=None):
 # predict(config="", nsample=10000)
 from core_run import predict
 
-"""
-def predict(config=None, nsample=None):
-    config_name  = config  if config is not None else config_default
-    mdict        = globals()[config_name]()
-    m            = mdict["global_pars"]
-
-
-    from source import run_inference
-    run_inference.run_predict(config_name = config_name,
-                              config_path = m["config_path"],
-                              n_sample    = nsample if nsample is not None else m["n_sample"],
-
-                              #### Optional
-                              path_data   = m["path_pred_data"],
-                              path_output = m["path_pred_output"],
-                              model_dict  = None
-                              )
-"""
 
 
 ###########################################################################################################

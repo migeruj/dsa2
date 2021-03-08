@@ -29,4 +29,5 @@ python example/classifier/classifier_income.py  predict  --nsample 1000   ;
 ### HyperOpt optuna testing
 python  example/test_hyperopt.py  hyperparam  --ntrials 1
 
-
+### Keras model test
+python example/test_mkeras.py  train    --config config1

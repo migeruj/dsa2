@@ -67,7 +67,7 @@ def map_model(model_name):
     return modelx
 
 
-def predict(model_name, path_model, dfX, cols_family):
+def predict(model_name, path_model, dfX, cols_family, model_dict):
     """
 
     Arguments:
@@ -105,8 +105,10 @@ def predict(model_name, path_model, dfX, cols_family):
     log("### Prediction  ############################################")
     dfX1  = dfX.reindex(columns=colsX)   #reindex included
 
-    ypred = modelx.predict(dfX1)
-
+    ypred = modelx.predict(dfX1,
+                           data_pars    = model_dict['data_pars'],
+                           compute_pars = model_dict['compute_pars']
+                           )
     return ypred
 
 
@@ -130,28 +132,44 @@ def run_predict(config_name, config_path, n_sample=-1,
             'pipe_list' : model_dict['model_pars']['pre_process_pars']['pipe_list']}
 
 
+
+
     ##########################################################################################
+    from run_preprocess import preprocess_inference   as preprocess
     colid            = load(f'{path_pipeline}/colid.pkl')
     df               = load_dataset(path_data, path_data_y=None, colid=colid, n_sample=n_sample)
+    dfX, cols        = preprocess(df, path_pipeline, preprocess_pars=pars)
 
-    from run_preprocess import preprocess_inference   as preprocess
-    dfX, cols_family = preprocess(df, path_pipeline, preprocess_pars=pars)
-    ypred, yproba    = predict(model_class, path_model, dfX, cols_family)
+
+    log("#### Extract column names  #####################################################")
+    ### Actual column names for Model Input :  label y and Input X (colnum , colcat), remove duplicate names
+    model_dict['data_pars']['coly']       = cols['coly']
+    model_dict['data_pars']['cols_model'] = list(set(sum([  cols[colgroup] for colgroup in model_dict['data_pars']['cols_model_group'] ]   , []) ))
+
+
+    #### Col Group by column type : Sparse, continuous, .... (ie Neural Network feed Input, remove duplicate names
+    ## 'coldense' = [ 'colnum' ]     'colsparse' = ['colcat' ]
+    model_dict['data_pars']['cols_model_type2'] = {}
+    for colg, colg_list in model_dict['data_pars'].get('cols_model_type', {}).items() :
+        model_dict['data_pars']['cols_model_type2'][colg] = list(set(sum([  cols[colgroup] for colgroup in colg_list ]   , [])))
+
+
+    ypred, yproba    = predict(model_class, path_model, dfX, cols, model_dict)
 
 
     log("############ Saving prediction  ###################################################" )
     log(ypred.shape, path_output)
     os.makedirs(path_output, exist_ok=True)
-    df[cols_family["coly"] + "_pred"]       = ypred
+    df[cols["coly"] + "_pred"]       = ypred
     if yproba is not None :
-       df[cols_family["coly"] + "_pred_proba"] = yproba
+       df[cols["coly"] + "_pred_proba"] = yproba
     df.to_csv(f"{path_output}/prediction.csv")
     log(df.head(8))
 
 
     log("###########  Export Specific ######################################################")
-    df[cols_family["coly"]] = ypred
-    df[[cols_family["coly"]]].to_csv(f"{path_output}/pred_only.csv")
+    df[cols["coly"]] = ypred
+    df[[cols["coly"]]].to_csv(f"{path_output}/pred_only.csv")
 
 
 
