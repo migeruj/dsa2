@@ -167,8 +167,7 @@ def fit(data_pars=None, compute_pars=None, out_pars=None, **kw):
     global model, session
     session = None  # Session type for compute
     #Xtrain, ytrain, Xval, yval = get_dataset(data_pars, task_type="train")
-
-
+    
     Xtrain, ytrain, Xval, yval, col_dict = get_dataset(data_pars, task_type="train")
 
 
@@ -191,7 +190,6 @@ def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
     Xtest, ytest = get_dataset(data_pars, task_type="eval")
     results      = model.model.evaluate(Xtest, ytest)
     ddict        = [{"metric_val": results, 'metric_name': model.model.metrics_names}]
-
     return ddict
 
 
@@ -348,26 +346,6 @@ def get_dataset(data_pars=None, task_type="train", **kw):
 
     raise Exception(f' Requires  Xtrain", "Xtest", "ytrain", "ytest" ')
 
-
-def get_params_sklearn(deep=False):
-    return model.model.get_params(deep=deep)
-
-
-def get_params(param_pars={}, **kw):
-    import json
-    # from jsoncomment import JsonComment ; json = JsonComment()
-    pp = param_pars
-    choice = pp['choice']
-    config_mode = pp['config_mode']
-    data_path = pp['data_path']
-
-    if choice == "json":
-        cf = json.load(open(data_path, mode='r'))
-        cf = cf[config_mode]
-        return cf['model_pars'], cf['data_pars'], cf['compute_pars'], cf['out_pars']
-
-    else:
-        raise Exception(f"Not support choice {choice} yet")
 
 ########################################################################################################################
 

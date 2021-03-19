@@ -255,6 +255,32 @@ def train(model_dict, dfX, cols_family, post_process_fun):
 
 ####################################################################################################
 ############CLI Command ############################################################################
+def cols_validate(model_dict):
+    """  Validate dictionnary
+    :param model_dict:
+    :return:
+    """
+    cols_input_type   = model_dict['data_pars']['cols_input_type']
+    cols_prepro_in    = [   t['cols_family']  for t in model_dict['model_pars']['pre_process_pars']['pipe_list']  ]
+    cols_prepro_out   = [   t['cols_out']  for t in model_dict['model_pars']['pre_process_pars']['pipe_list']  ]
+    cols_model_in     = model_dict['data_pars']['cols_model_group']
+    cols_model_type   = [ col_list  for k,col_list in  model_dict['data_pars']['cols_model_type'].items() ]
+    cols_model_type   = sum(cols_model_type, [])
+
+    for t in cols_prepro_in :
+       if  not t  in cols_input_type and not t  in cols_prepro_out  : raise Exception(f"Missing prepro col {t} in cols_input_type")
+
+    for t in cols_model_in :
+       if  not t  in cols_prepro_out and not t in cols_input_type: raise Exception(f"Missing cols_model_group {t} in cols_input_type, prepro cols_out")
+
+    for t in cols_model_type :
+       if  not t  in cols_prepro_out and not t in cols_input_type: raise Exception(f"Missing cols_model_type {t} in cols_input_type, prepro cols_out")
+
+    log('#######  colgroup names are valid')
+
+
+
+
 def run_train(config_name, config_path="source/config_model.py", n_sample=5000,
               mode="run_preprocess", model_dict=None, return_mode='file', **kw):
     """
@@ -279,7 +305,8 @@ def run_train(config_name, config_path="source/config_model.py", n_sample=5000,
     log(path_output)
 
 
-    log("#### load raw data column family  ###############################################")
+    log("#### load raw data column family, colum check  ###################################")
+    cols_validate(model_dict)
     cols_group = model_dict['data_pars']['cols_input_type']  ### Raw
     log(cols_group)
 

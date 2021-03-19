@@ -172,8 +172,8 @@ def predict(config='', nsample=None):
     log(mdict)
 
 
-    from source import run_inference
-    run_inference.run_predict(config_name = config_name,
+    from source import run_sampler
+    run_sampler.run_transform(config_name = config_name,
                               config_path = m['config_path'],
                               n_sample    = nsample if nsample is not None else m['n_sample'],
 
@@ -182,6 +182,29 @@ def predict(config='', nsample=None):
                               path_output = m['path_pred_output'],
                               model_dict  = None
                               )
+
+####################################################################################
+########## Train ###################################################################
+def train_sampler(config='', nsample=None):
+    """  train a model with  confi_name  and nsample
+    :param config:
+    :param nsample:
+    :return:
+    """
+
+    config_uri, config_name = get_config_path(config)
+
+    mdict = get_global_pars(  config_uri)
+    m     = mdict['global_pars']
+    log(mdict)
+    from source import run_sampler
+    run_sampler.run_train(config_name       =  config_name,
+                        config_path       =  m['config_path'],
+                        n_sample          =  nsample if nsample is not None else m['n_sample'],
+                        # use_mlmflow       =  False
+                        )
+
+
 
 
 ########################################################################################

@@ -1,11 +1,13 @@
 lightgbm==2.3.0
 scikit-learn==0.23.2
-pandas==0.25.3
-pandas-profiling==2.5.0
+#pandas==0.25.3
+pandas
+#pandas-profiling==2.5.0
+pandas-profiling
 #scipy==1.3.1
 pyro-ppl==1.5.0
 optuna==1.1.0
-fire
+fire==0.4.0
 pyarrow
 tqdm
 numba==0.50.1
@@ -13,6 +15,7 @@ scipy>=0.19.1
 cloudpickle
 gplearn
 sympy
+dill
 #pyod==0.3.0
 #featuretools==0.13.3
 #featuretools-sklearn-transformer==0.1.0
@@ -23,7 +26,10 @@ sympy
 nltk
 category_encoders
 imblearn
-
+umap
+pyspark==2.4.0
+pyarrow>=0.10
+koalas==1.7.0
 ##########################################
 tensorflow_text>=2.0.0rc0
 # simpleneighbors[annoy]
@@ -41,6 +47,11 @@ tensorflow_text>=2.0.0rc0
 # mljar-supervised
 # explainerdashboard
 # petastorm
+
+#### Time Series
+# pystan==2.19.1.1 
+fbprophet==0.7.1  
+matrixprofile-ts  ### Use for tfresh
 
 
 #########################################

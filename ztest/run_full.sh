@@ -31,3 +31,8 @@ python  example/test_hyperopt.py  hyperparam  --ntrials 1
 
 ### Keras model test
 python example/test_mkeras.py  train    --config config1
+
+
+### Time Series Prediction
+python tseries.py  train      --config  config1
+

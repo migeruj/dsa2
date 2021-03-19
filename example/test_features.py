@@ -7,14 +7,13 @@ python  example/test_features.py  train       --nsample 500 --config config1
 
 
 """
-
 import warnings, copy, os, sys, pandas as pd
 warnings.filterwarnings('ignore')
 
 ####################################################################################
 ###### Path ########################################################################
 root_repo      =  os.path.abspath(os.getcwd()).replace("\\", "/") + "/"     ; print(root_repo)
-THIS_FILEPATH  =  os.path.abspath(__file__) 
+THIS_FILEPATH  =  os.path.abspath(__file__)
 
 sys.path.append(root_repo)
 from source.util_feature import save,os_get_function_name
@@ -25,7 +24,7 @@ def global_pars_update(model_dict,  data_name, config_name):
     dir_data  = root_repo + "/data/"  ; print("dir_data", dir_data)
 
     m                      = {}
-    m['config_path']       = THIS_FILEPATH  
+    m['config_path']       = THIS_FILEPATH
     m['config_name']       = config_name
 
     #### peoprocess input path
@@ -68,12 +67,6 @@ config_default   = 'config1'          ### name of function which contains data c
 ####################################################################################
 """
 Features to be tested.
-
-        #### Data Over/Under sampling         
-        source/prepro_sampler.py::pd_sample_imblearn(df,col, pars)
-        source/prepro_sampler.py::pd_filter_rows(df,col, pars)
-
-
         #### Category, Numerical
         source/prepro.py::pd_col_genetic_transform(df,col, pars)
         
@@ -137,12 +130,14 @@ cols_input_type_2 = {
 
 
 
+
+
 ############################################################################################################
 ############################################################################################################
 ##### category, numerics
 def config1(path_model_out="") :
     """
-       Contains all needed informations 
+       Contains all needed informations
     """
     config_name  = os_get_function_name()
     data_name    = "titanic"         ### in data/input/
@@ -222,7 +217,7 @@ def config1(path_model_out="") :
       #### columns as raw data input
       'cols_input_type' : cols_input_type_2,
 
-      ### columns for model input    #########################################################
+      ### columns for model input    ###########################################################
       #  "colnum", "colnum_bin", "colnum_onehot",   #### Colnum columns
       #  "colcat", "colcat_bin", "colcat_onehot", "colcat_bin_map",  #### colcat columns
       #  'colcross', "colcross_pair_onehot" #### colcross columns
@@ -254,16 +249,12 @@ def config1(path_model_out="") :
 
 
 
-
-
-
-
 ############################################################################################################
 ############################################################################################################
 ##### Text
 def config2(path_model_out="") :
     """
-       Contains all needed informations 
+       Contains all needed informations
     """
     config_name  = os_get_function_name()
     data_name    = "titanic"         ### in data/input/
@@ -283,10 +274,10 @@ def config2(path_model_out="") :
     ### Pipeline for data processing ##############################
     'pipe_list': [
     ###  coly encoding
-    {'uri': 'source/prepro.py::pd_coly',           'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0, 'y_norm_fun': None}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         }        
+    {'uri': 'source/prepro.py::pd_coly',           'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0, 'y_norm_fun': None}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         }
     ,{'uri': 'source/prepro.py::pd_colcat_bin',    'pars': {'path_pipeline': False}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             }
 
-    #### Text        
+    #### Text
      ,{"uri":  "source/prepro_text.py::pd_coltext",   "pars": {'dimpca':1, "word_minfreq":2}, "cols_family": "coltext",   "cols_out": "col_text",  "type": "" }
      ,{"uri":  "source/prepro_text.py::pd_coltext_universal_google",   "pars": {'model_uri': "https://tfhub.dev/google/universal-sentence-encoder-multilingual/3"}, "cols_family": "coltext",   "cols_out": "col_text",  "type": "" }
 
@@ -303,7 +294,7 @@ def config2(path_model_out="") :
       'cols_input_type' : cols_input_type_2,
 
       ### columns for model input    #########################################################
-      'cols_model_group': [ # 'colnum', 
+      'cols_model_group': [ # 'colnum',
                             'colcat_bin',
                           ],
 
@@ -311,7 +302,7 @@ def config2(path_model_out="") :
       'cols_model_type': {
          'continuous' : [ 'colnum',   ],
          'discreate'  : [ 'colcat_bin',   ]
-      }   
+      }
 
       ### Filter data rows   ###################################################################
      ,'filter_pars': { 'ymax' : 2 ,'ymin' : -1 }
@@ -325,7 +316,7 @@ def config2(path_model_out="") :
 
 
 
-
+############################################################################################################
 ##################################################################################################
 ##### Time Series
 def config4(path_model_out="") :
@@ -352,15 +343,15 @@ def config4(path_model_out="") :
     ### Pipeline for data processing ##############################
     'pipe_list': [
     ###  coly encoding
-    {'uri': 'source/prepro.py::pd_coly',                 'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0, 'y_norm_fun': None}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         }        
+    {'uri': 'source/prepro.py::pd_coly',                 'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0, 'y_norm_fun': None}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         }
       ,{'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {'path_pipeline': False}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             }
 
-              
-    #### Time Series 
+
+    #### Time Series
     #,{'uri': 'source/prepro_tseries.py::pd_ts_autoregressive' , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
     #,{'uri': 'source/prepro_tseries.py::pd_ts_basic'          , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
     #,{'uri': 'source/prepro_tseries.py::pd_ts_date'           , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
-    
+
     #,{'uri': 'source/prepro_tseries.py::pd_ts_detrend'        , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
     #,{'uri': 'source/prepro_tseries.py::pd_ts_generic'        , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
     #,{'uri': 'source/prepro_tseries.py::pd_ts_groupby'        , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
@@ -383,7 +374,7 @@ def config4(path_model_out="") :
       'cols_input_type' : cols_input_type_2,
 
       ### columns for model input    #########################################################
-      'cols_model_group': [ # 'colnum', 
+      'cols_model_group': [ # 'colnum',
                             'colcat_bin',
                           ],
 
@@ -391,7 +382,7 @@ def config4(path_model_out="") :
       'cols_model_type': {
          'continuous' : [ 'colnum',   ],
          'discreate'  : [ 'colcat_bin'    ]
-      }   
+      }
 
 
       ### Filter data rows   ###################################################################
@@ -406,6 +397,9 @@ def config4(path_model_out="") :
 
 
 
+
+############################################################################################################
+############################################################################################################
 def config9(path_model_out="") :
     """
        python  example/test_features.py  train       --nsample 500 --config config1
@@ -552,19 +546,19 @@ if __name__ == "__main__":
 
 
 
+
+
 ############################################################################################################
 ############################################################################################################
 ##### Sampler
 """
-
-Need to change the way sampler works ; NOT Good
 
 
 
 """
 def config3(path_model_out="") :
     """
-       Contains all needed informations 
+       Contains all needed informations
     """
     config_name  = os_get_function_name()
     data_name    = "titanic"         ### in data/input/
@@ -586,15 +580,15 @@ def config3(path_model_out="") :
     ### Pipeline for data processing ##############################
     'pipe_list': [
     ###  coly encoding
-    {'uri': 'source/prepro.py::pd_coly',                 'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0, 'y_norm_fun': None}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         }        
+    {'uri': 'source/prepro.py::pd_coly',                 'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0, 'y_norm_fun': None}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         }
     ,{'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {'path_pipeline': False}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             }
-              
 
-    #### Data Over/Under sampling, New data         
-    #,{'uri': 'source/prepro_sampler.py::pd_sample_imblearn'   , 
-    #            'pars': {"model_name": 'SMOTEENN', 
-    #                    'pars_resample':    {'sampling_strategy' : 'auto', 'random_state':0}, 
-    #                    "coly": "Survived"} , 
+
+    #### Data Over/Under sampling, New data
+    #,{'uri': 'source/prepro_sampler.py::pd_sample_imblearn'   ,
+    #            'pars': {"model_name": 'SMOTEENN',
+    #                    'pars_resample':    {'sampling_strategy' : 'auto', 'random_state':0},
+    #                    "coly": "Survived"} ,
     #                    'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': 'add_coly'  }
     # ,{'uri': 'source/prepro_sampler.py::pd_filter_rows'       , 'pars': {'ymin': -9999999999.0, 'ymax': 999999999.0} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
     #,{'uri': 'source/prepro_sampler.py::pd_augmentation_sdv'  , 'pars': {} , 'cols_family': 'colnum' , 'cols_out': 'colnum_out' , 'type': '' }
@@ -612,7 +606,7 @@ def config3(path_model_out="") :
       'cols_input_type' : cols_input_type_2,
 
       ### columns for model input    ############################################################
-      'cols_model_group': [ # 'colnum', 
+      'cols_model_group': [ # 'colnum',
                             'colcat_bin',
                           ],
 
@@ -620,7 +614,7 @@ def config3(path_model_out="") :
       'cols_model_type': {
          'continuous' : [ 'colnum',   ],
          'discreate'  : [ 'colcat_bin',   ]
-      }   
+      }
 
 
       ### Filter data rows   ###################################################################

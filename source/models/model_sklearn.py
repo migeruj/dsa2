@@ -131,7 +131,6 @@ def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
     global model, session
     data_pars['train'] = True
     Xval, yval = get_dataset(data_pars, task_type="eval")
-    # ypred      = model.model.predict(Xval)
     ypred = predict(Xval, data_pars, compute_pars, out_pars)
 
     # log(data_pars)
@@ -144,7 +143,6 @@ def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
 
     mpars2 = mpars.get("metrics_pars", {})  ##Specific to score
     score_val = scorer(yval, ypred, **mpars2)
-
     ddict = [{"metric_val": score_val, 'metric_name': mpars['metric_name']}]
 
     return ddict
@@ -152,10 +150,6 @@ def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
 
 def predict(Xpred=None, data_pars={}, compute_pars={}, out_pars={}, **kw):
     global model, session
-    post_process_fun = model.model_pars.get('post_process_fun', None)
-    if post_process_fun is None:
-        def post_process_fun(y):
-            return y
 
     if Xpred is None:
         data_pars['train'] = False

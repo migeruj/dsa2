@@ -139,6 +139,7 @@ def run_predict(config_name, config_path, n_sample=-1,
     colid            = load(f'{path_pipeline}/colid.pkl')
     df               = load_dataset(path_data, path_data_y=None, colid=colid, n_sample=n_sample)
     dfX, cols        = preprocess(df, path_pipeline, preprocess_pars=pars)
+    coly = cols["coly"]  
 
 
     log("#### Extract column names  #####################################################")
@@ -154,15 +155,19 @@ def run_predict(config_name, config_path, n_sample=-1,
         model_dict['data_pars']['cols_model_type2'][colg] = list(set(sum([  cols[colgroup] for colgroup in colg_list ]   , [])))
 
 
+    log("############ Prediction  ###################################################" )
     ypred, yproba    = predict(model_class, path_model, dfX, cols, model_dict)
+
+    post_process_fun        = model_dict['model_pars']['post_process_fun']
+    df[ coly + "_pred"]     = ypred
+    df[ coly + "_pred"]     = dfX[coly + '_pred'].apply(lambda  x : post_process_fun(x) )
+    if yproba is not None :
+       df[ coly + "_pred_proba"] = yproba
 
 
     log("############ Saving prediction  ###################################################" )
     log(ypred.shape, path_output)
     os.makedirs(path_output, exist_ok=True)
-    df[cols["coly"] + "_pred"]       = ypred
-    if yproba is not None :
-       df[cols["coly"] + "_pred_proba"] = yproba
     df.to_csv(f"{path_output}/prediction.csv")
     log(df.head(8))
 

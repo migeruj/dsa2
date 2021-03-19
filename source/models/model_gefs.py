@@ -1,13 +1,19 @@
 # pylint: disable=C0321,C0103,C0301,E1305,E1121,C0302,C0330,C0111,W0613,W0611,R1705
 # -*- coding: utf-8 -*-
 """
+python model_gef.py test
+
+
+
 """
-import os
+import os, sys
 import pandas as pd
 import numpy as np
 import sklearn
 
 try :
+  ### in repo/model_gefs/  
+  sys.path.append( os.path.dirname(os.path.abspath(__file__)) + "/repo/model_gefs/" )
   from gefs import RandomForest
 except :
   os.system( " python -m pip install git+https://github.com/arita37/GeFs/GeFs.git@aa32d657013b7cacf62aaad912a9b88110cee5d1  -y ")
@@ -16,9 +22,6 @@ except :
 
 ####################################################################################################
 VERBOSE = True
-
-
-# MODEL_URI = get_model_uri(__file__)
 
 def log(*s):
     print(*s, flush=True)
@@ -81,10 +84,7 @@ def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
     global model, session
     data_pars['train'] = True
     Xval, yval        = get_dataset(data_pars, task_type="eval")
-    # ypred      = model.model.predict(Xval)
     ypred, ypred_prob = predict(Xval, data_pars, compute_pars, out_pars)
-
-    # log(data_pars)
     mpars = compute_pars.get("metrics_pars", {'metric_name': 'auc'})
 
     scorer = {
@@ -159,36 +159,6 @@ def load_info(path=""):
             dd[key] = obj
     return dd
 
-
-def preprocess(prepro_pars):
-    if prepro_pars['type'] == 'test':
-        from sklearn.datasets import make_classification
-        from sklearn.model_selection import train_test_split
-
-        X, y = make_classification(n_features=10, n_redundant=0, n_informative=2,
-                                   random_state=1, n_clusters_per_class=1)
-
-        # log(X,y)
-        Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
-        return Xtrain, ytrain, Xtest, ytest
-
-    if prepro_pars['type'] == 'train':
-        from sklearn.model_selection import train_test_split
-        df = pd.read_csv(prepro_pars['path'])
-        dfX = df[prepro_pars['colX']]
-        dfy = df[prepro_pars['coly']]
-        Xtrain, Xtest, ytrain, ytest = train_test_split(dfX.values, dfy.values,
-                                                        stratify=dfy.values, test_size=0.1)
-        return Xtrain, ytrain, Xtest, ytest
-
-    else:
-        df = pd.read_csv(prepro_pars['path'])
-        dfX = df[prepro_pars['colX']]
-
-        Xtest, ytest = dfX, None
-        return None, None, Xtest, ytest
-
-
 ####################################################################################################
 ############ Do not change #########################################################################
 def get_dataset(data_pars=None, task_type="train", **kw):
@@ -217,28 +187,6 @@ def get_dataset(data_pars=None, task_type="train", **kw):
 
     raise Exception(f' Requires  Xtrain", "Xtest", "ytrain", "ytest" ')
 
-
-def get_params_sklearn(deep=False):
-    return model.model.get_params(deep=deep)
-
-
-def get_params(param_pars={}, **kw):
-    import json
-    # from jsoncomment import JsonComment ; json = JsonComment()
-    pp          = param_pars
-    choice      = pp['choice']
-    config_mode = pp['config_mode']
-    data_path   = pp['data_path']
-
-    if choice == "json":
-        cf = json.load(open(data_path, mode='r'))
-        cf = cf[config_mode]
-        return cf['model_pars'], cf['data_pars'], cf['compute_pars'], cf['out_pars']
-
-    else:
-        raise Exception(f"Not support choice {choice} yet")
-
-        
         
 ####################################################################################################        
 ############ Custom Code ############################################################################
@@ -283,9 +231,8 @@ def pd_colcat_get_catcount(df, classcol=None, continuous_ids=[]):
     return ncat
 
                                      
-def test_model():
+def test():
     # Auxiliary functions
-
     def get_stats(data, ncat=None):
         """
             Compute univariate statistics for continuous variables. Parameters
@@ -358,7 +305,7 @@ def test_model():
 
                                      
     # Load toy dataset
-    df_white   = pd.read_csv('../../data/input/wine-quality/raw/winequality-white.csv', sep=';').values
+    df_white   = pd.read_csv('https://raw.githubusercontent.com/arita37/GeFs/master/data/winequality_white.csv', sep=';').values
     ncat_white = pd_colcat_get_catcount(df_white, classcol=-1)
     ncat_white[-1] = 2
 
@@ -377,21 +324,120 @@ def test_model():
 
     log('gefs model test ok')
 
+
+
+def test2():
+    data_name    = "titanic"         ### in data/input/
+    model_class  = "model_gefs.py::Model"  ### ACTUAL Class name for model_sklearn.py
+    n_sample     = 1000
+
+    def post_process_fun(y):   ### After prediction is done
+        return  int(y)
+
+    def pre_process_fun(y):    ### Before the prediction is done
+        return  int(y)
+
+
+    model_dict = {"model_pars": {
+        ### LightGBM API model   #######################################
+         "model_class": model_class
+        ,"model_pars" : {'cat': 10, 'n_estimators': 5
+                        }
+
+        , "post_process_fun" : post_process_fun   ### After prediction  ##########################################
+        , "pre_process_pars" : {"y_norm_fun" :  pre_process_fun ,  ### Before training  ##########################
+
+
+        ### Pipeline for data processing ##############################
+        "pipe_list": [
+        #### coly target prorcessing
+        {"uri": "source/prepro.py::pd_coly",                 "pars": {}, "cols_family": "coly",       "cols_out": "coly",           "type": "coly"         },
+        {"uri": "source/prepro.py::pd_colnum_bin",           "pars": {}, "cols_family": "colnum",     "cols_out": "colnum_bin",     "type": ""             },
+
+        #### catcol INTO integer,   colcat into OneHot
+        {"uri": "source/prepro.py::pd_colcat_bin",           "pars": {}, "cols_family": "colcat",     "cols_out": "colcat_bin",     "type": ""             },
+        {"uri": "source/prepro.py::pd_colcat_to_onehot",     "pars": {}, "cols_family": "colcat_bin", "cols_out": "colcat_onehot",  "type": ""             },
+
+        ],
+               }
+        },
+
+      "compute_pars": { "metric_list": ["accuracy_score","average_precision_score"]
+                        # ,"mlflow_pars" : {}   ### Not empty --> use mlflow
+                      },
+
+      "data_pars": { "n_sample" : n_sample,
+          "download_pars" : None,
+
+          ### Raw data:  column input ##############################################################
+          "cols_input_type" : cols_input_type_1,
+
+
+          ### Model Input :  Merge family of columns   #############################################
+          "cols_model_group": [ "colnum_bin",
+                                "colcat_bin",
+
+                              ]
+
+      #### Model Input : Separate Category Sparse from Continuous : Aribitrary name is OK (!)
+     ,'cols_model_type': {
+         'continuous'   : [ 'colnum',   ],
+         'sparse'       : [ 'colcat_bin', 'colnum_bin',  ],
+         'my_split_23'  : [ 'colnum_bin',   ],
+      }   
+
+          ### Filter data rows   ##################################################################
+         ,"filter_pars": { "ymax" : 2 ,"ymin" : -1 }
+
+         }
+      }
+
+    ######## Run ###########################################
+    test_helper(model_dict)
+
+
+def test_helper(model_pars, data_pars, compute_pars):
+
+
+    model_pars, data_pars, compute_pars =  model_dict['model_pars'],
+
+    global model, session
+    root  = "ztmp/"
+    model = Model(model_pars=model_pars, data_pars=data_pars, compute_pars=compute_pars)
+
+    log('\n\nTraining the model..')
+    fit(data_pars=data_pars, compute_pars=compute_pars, out_pars=None)
+
+    log('Predict data..')
+    ypred, ypred_proba = predict(Xpred=None, data_pars=data_pars, compute_pars=compute_pars)
+    log(f'Top 5 y_pred: {np.squeeze(ypred)[:5]}')
+
+    log('Evaluating the model..')
+    log(eval(data_pars=data_pars, compute_pars=compute_pars))
+
+    log('Saving model..')
+    save(path= root + '/model_dir/')
+
+    log('Load model..')
+    model, session = load_model(path= root + "/model_dir/")
+    log('Model successfully loaded!\n\n')
+
+    log('Model architecture:')
+    log(model.summary())
+
+
+
+
+
+
                                      
 if __name__ == "__main__":
     import fire
     fire.Fire()
+
                                      
 """
 python model_gef.py test_model
-
-
-"""
-                                     
-                                     
-                                     
-                                     
-"""
 
     def learncats(data, classcol=None, continuous_ids=[]):
   

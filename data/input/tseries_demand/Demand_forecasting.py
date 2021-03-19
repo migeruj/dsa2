@@ -57,7 +57,6 @@ def pd_ts_date(df: pd.DataFrame, cols: list=None, pars: dict=None):
     return dfdate, col_pars
 
 
-
 def pd_ts_rolling(df: pd.DataFrame, cols: list=None, pars: dict=None):
     """
       Rolling statistics
@@ -85,7 +84,6 @@ def pd_ts_rolling(df: pd.DataFrame, cols: list=None, pars: dict=None):
 
         col_new.append('rolling_mean_' + str(i))
         col_new.append('rolling_std_' + str(i))
-
 
     # Rollings with sliding shift
     for len_shift in len_shift_list:
@@ -127,7 +125,6 @@ def preprocessing_data(df):
     y   = 'sales'
 
     return dfall, col, y
-
 
 
 

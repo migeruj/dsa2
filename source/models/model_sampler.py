@@ -1,37 +1,34 @@
 # pylint: disable=C0321,C0103,C0301,E1305,E1121,C0302,C0330,C0111,W0613,W0611,R1705
 # -*- coding: utf-8 -*-
 """
-cd source/models/
-
-python model_sampler.py test
-
-
 Genreate  train_data  ---> New train data by sampling
-
+cd source/
+python source/model_sampler.py test
 Transformation for ALL Columns :
    Increase samples, Reduce Samples.
-
 Main isssue is the number of rows change  !!!!
   cannot merge with others
-
   --> store as train data
-
   train data ---> new train data
-
   Transformation with less rows !
-
 2 usage :
     Afte preprocessing, over sample, under-sample.
-
-
 """
+import os, sys
+sys.path.append( os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/")
+### import util_feature
+
+
 import os, pandas as pd, numpy as np,  sklearn
-from sklearn.cluster import *
+import copy
+from sklearn.cluster import KMeans, DBSCAN, Birch
+from sklearn.decomposition import TruncatedSVD, MiniBatchSparsePCA, FastICA
+
+from umap import UMAP
 
 try:
     #from sdv.demo import load_tabular_demo
-    from sdv.tabular import TVAE
-    from sdv.tabular import CTGAN
+    from sdv.tabular import TVAE, CTGAN
     from sdv.timeseries import PAR
     from sdv.evaluation import evaluate
     import ctgan
@@ -41,37 +38,652 @@ try:
 except:
     os.system("pip install sdv")
     os.system('pip install ctgan==0.3.1.dev0')
-    from sdv.tabular import TVAE
-    from sdv.tabular import CTGAN
+    from sdv.tabular import TVAE, CTGAN
     from sdv.timeseries import PAR
     from sdv.evaluation import evaluate  
 
-
-
 ### IMBLEARN
+import six
+import sys
+sys.modules['sklearn.externals.six'] = six
+
 from imblearn.over_sampling import SMOTE
 from imblearn.combine import SMOTEENN, SMOTETomek
 from imblearn.under_sampling import NearMiss
 
 
+### MMAE
+try:
+  from mmae.multimodal_autoencoder import MultimodalAutoencoder
+
+except:
+    os.system("pip install mmae[keras]")
 ####################################################################################################
-VERBOSE = True
+
+# CONSTANTS
+SDV_MODLES = ['TVAE', 'CTGAN', 'PAR'] # The Synthetic Data Vault Models
+IMBLEARN_MODELS = ['SMOTE', 'SMOTEENN', 'SMOTETomek', 'NearMiss']
+verbosity = 3
 
 def log(*s):
     print(*s, flush=True)
 
 
+def log2(*s):
+    if verbosity >= 2 :
+       print(*s, flush=True)
+
+
 def log3(*s):
-    print(*s, flush=True)
+    if verbosity >= 3 :
+       print(*s, flush=True)
+
+
+
+
+
+####################################################################################################
+def autoencoder_multimodal():
+    """
+    pip install mmae[keras]
+    :return:
+    """
+    # Remove 'tensorflow.' from the next line if you use just Keras
+    from tensorflow.keras.datasets import mnist
+    from mmae.multimodal_autoencoder import MultimodalAutoencoder
+
+
+    # Load example data
+    (x_train, y_train), (x_validation, y_validation) = mnist.load_data()
+    x_train = x_train.astype('float32') / 255.0
+    y_train = y_train.astype('float32') / 255.0
+    x_validation = x_validation.astype('float32') / 255.0
+    y_validation = y_validation.astype('float32') / 255.0
+
+
+    data = [x_train, y_train]
+    validation_data = [x_validation, y_validation]
+
+    # Set network parameters
+    input_shapes = [x_train.shape[1:], (1,)]
+    # Number of units of each layer of encoder network
+    hidden_dims = [128, 64, 8]
+    # Output activation functions for each modality
+    output_activations = ['sigmoid', 'relu']
+
+    optimizer = 'adam'
+    # Loss functions corresponding to a noise model for each modality
+    loss = ['bernoulli_divergence', 'poisson_divergence']
+    # Construct autoencoder network
+    autoencoder = MultimodalAutoencoder(input_shapes, hidden_dims,
+                                        output_activations)
+    autoencoder.compile(optimizer, loss)
+
+
+    # Train model where input and output are the same
+    autoencoder.fit(data, epochs=100, batch_size=256,
+                    validation_data=validation_data)
+
+    #To obtain a latent representation of the training data:
+    latent_data = autoencoder.encode(data)
+
+    #To decode the latent representation:
+    reconstructed_data = autoencoder.decode(latent_data)
+
+    #Encoding and decoding can also be merged into the following single statement:
+    reconstructed_data = autoencoder.predict(data)
+
+
+
+
+def autoEncoder(df):
+    """"
+    (4) Autoencoder
+    An autoencoder is a type of artificial neural network used to learn efficient data codings in an unsupervised manner.
+    The aim of an autoencoder is to learn a representation (encoding) for a set of data, typically for dimensionality reduction,
+    by training the network to ignore noise.
+    (i) Feed Forward
+    The simplest form of an autoencoder is a feedforward, non-recurrent
+    neural network similar to single layer perceptrons that participate in multilayer perceptrons
+    """
+    from sklearn.preprocessing import minmax_scale
+    import tensorflow as tf
+    import pandas as pd
+    import numpy as np
+
+
+
+    def encoder_dataset(df, drop=None, dimesions=20):
+        # encode categorical columns
+        cat_columns = df.select_dtypes(['category']).columns
+        df[cat_columns] = df[cat_columns].apply(lambda x: x.cat.codes)
+        print(cat_columns)
+
+        # encode objects columns
+        from sklearn.preprocessing import OrdinalEncoder
+
+        def encode_objects(X_train):
+            oe = OrdinalEncoder()
+            oe.fit(X_train)
+            X_train_enc = oe.transform(X_train)
+            return X_train_enc
+
+        selected_cols = df.select_dtypes(['object']).columns
+        df[selected_cols] = encode_objects(df[selected_cols])
+
+        # df = df[[c for c in df.columns if c not in df.select_dtypes(['object']).columns]]
+        if drop:
+            train_scaled = minmax_scale(df.drop(drop,axis=1).values, axis = 0)
+        else:
+           train_scaled = minmax_scale(df.values, axis = 0)
+        return train_scaled
+    # define the number of encoding dimensions
+    encoding_dim = pars.get('dimesions', 2)
+    # define the number of features
+
+
+
+    train_scaled = encoder_dataset(df, pars.get('drop',None), encoding_dim)
+
+    print("train scaled: ", train_scaled)
+    ncol = train_scaled.shape[1]
+
+
+    input_dim = tf.keras.Input(shape = (ncol, ))
+    # Encoder Layers
+    encoded1      = tf.keras.layers.Dense(3000, activation = 'relu')(input_dim)
+    encoded2      = tf.keras.layers.Dense(2750, activation = 'relu')(encoded1)
+    encoded3      = tf.keras.layers.Dense(2500, activation = 'relu')(encoded2)
+    encoded4      = tf.keras.layers.Dense(750, activation = 'relu')(encoded3)
+    encoded5      = tf.keras.layers.Dense(500, activation = 'relu')(encoded4)
+    encoded6      = tf.keras.layers.Dense(250, activation = 'relu')(encoded5)
+    encoded7      = tf.keras.layers.Dense(encoding_dim, activation = 'relu')(encoded6)
+
+
+
+    encoder       = tf.keras.Model(inputs = input_dim, outputs = encoded7)
+    encoded_input = tf.keras.Input(shape = (encoding_dim, ))
+
+
+
+
+    encoded_train = pd.DataFrame(encoder.predict(train_scaled),index=df.index)
+    encoded_train = encoded_train.add_prefix('encoded_')
+    if 'drop' in pars :
+        drop = pars['drop']
+        encoded_train = pd.concat((df[drop],encoded_train),axis=1)
+
+    return encoded_train
+    # df_out = mapper.encoder_dataset(df.copy(), ["Close_1"], 15); df_out.head()
+
+
+
+
+
+
+
 
 ####################################################################################################
 global model, session
 
-
 def init(*kw, **kwargs):
     global model, session
-    model = Model(*kw, **kwargs)
+    model   = Model(*kw, **kwargs)
     session = None
+
+
+####################################################################################################
+class Model(object):
+    def __init__(self, model_pars=None, data_pars=None, compute_pars=None):
+        self.model_pars, self.compute_pars, self.data_pars = model_pars, compute_pars, data_pars
+
+        if model_pars is None:
+            self.model = None
+        else:
+            model_class = globals()[model_pars['model_class']]
+            self.model  = model_class(**model_pars['model_pars'])
+            log2(model_class, self.model)
+
+
+
+def fit(data_pars: dict=None, compute_pars: dict=None, out_pars: dict=None, **kw):
+    """
+    """
+    global model, session
+    session = None  # Session type for compute
+    Xtrain_tuple, ytrain, Xtest_tuple, ytest = get_dataset(data_pars, task_type="train")
+
+    cpars = copy.deepcopy(compute_pars.get("compute_pars", {}))
+
+    if ytrain is not None and model.model_pars['model_class'] not in SDV_MODLES :  ###with label
+       model.model.fit(Xtrain_tuple, ytrain, **cpars)
+    else :
+       model.model.fit(Xtrain_tuple, **cpars)
+
+
+def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
+    """
+       Return metrics of the model when fitted.
+    """
+    global model, session
+    from sdv.evaluation import evaluate
+
+    data_pars['train'] = True
+    Xval, yval         = get_dataset(data_pars, task_type="eval")
+
+    if model.model_pars['model_class'] in IMBLEARN_MODELS:
+        Xnew, ynew     = transform((Xval, yval), data_pars, compute_pars, out_pars)
+    else:
+        Xnew            = transform(Xval, data_pars, compute_pars, out_pars)
+    
+    # log(data_pars)
+    mpars = compute_pars.get("metrics_pars", {'aggregate': True})
+
+    if model.model_pars['model_class'] in SDV_MODLES:
+        evals = evaluate(Xnew, Xval, **mpars )
+        return evals
+    else:
+        return None
+
+
+def transform(Xpred=None, data_pars={}, compute_pars={}, out_pars={}, **kw):
+    """ Geenrate Xtrain  ----> Xtrain_new
+    :param Xpred:
+        Xpred ==> None            if you want to get generated samples by by SDV models
+              ==> tuple of (x, y) if you want to resample dataset with IMBLEARN models
+              ==> dataframe       if you want to transorm by sklearn models like TruncatedSVD
+    :param data_pars:
+    :param compute_pars:
+    :param out_pars:
+    :param kw:
+    :return:
+    """
+
+    global model, session
+    post_process_fun = model.model_pars.get('post_process_fun', None)
+    if post_process_fun is None:
+        def post_process_fun(y):
+            return y
+
+    #######
+    if Xpred is None:
+        if model.model_pars['model_class'] in IMBLEARN_MODELS:
+            Xpred_tuple, y = get_dataset(data_pars, task_type="eval")
+
+        else:
+            Xpred_tuple = get_dataset(data_pars, task_type="predict")
+
+    else :
+        cols_type         = data_pars['cols_model_type2']
+        cols_ref_formodel = cols_type
+        split = kw.get("split", False)
+
+        if model.model_pars['model_class'] in IMBLEARN_MODELS:
+            if isinstance(Xpred, tuple) and len(Xpred) == 2:
+                x, y = Xpred
+                Xpred_tuple = get_dataset_tuple(x, cols_type, cols_ref_formodel, split)
+
+            else:
+                raise  Exception(f"IMBLEARN MODELS need to pass x, y to resample,you have to pass them as tuple => Xpred = (x, y)")
+
+        else:
+            Xpred_tuple       = get_dataset_tuple(Xpred, cols_type, cols_ref_formodel, split)
+
+
+    Xnew= None
+    if model.model_pars['model_class'] in SDV_MODLES :
+       Xnew = model.model.sample(compute_pars.get('n_sample_generation', 100) )
+
+    elif model.model_pars['model_class'] in IMBLEARN_MODELS :   ### Sampler
+       # fit_resample(x ,y ) ==> resample dataset, it returns x,y after resampling
+       # Xnew ==> tuple(x, y) after resmapling
+       Xnew = model.model.fit_resample( Xpred_tuple, y, **compute_pars.get('compute_pars', {}) )
+
+
+    else :
+       Xnew = model.model.transform( Xpred_tuple, **compute_pars.get('compute_pars', {}) )
+
+    log3("generated data", Xnew)
+    return Xnew
+
+
+
+def predict(Xpred=None, data_pars={}, compute_pars={}, out_pars={}, **kw):
+    global model, session
+    pass
+    ### No need
+
+
+def reset():
+    global model, session
+    model, session = None, None
+
+
+def save(path=None, info=None):
+    global model, session
+    import cloudpickle as pickle
+    os.makedirs(path, exist_ok=True)
+
+    filename = "model.pkl"
+    pickle.dump(model, open(f"{path}/{filename}", mode='wb'))  # , protocol=pickle.HIGHEST_PROTOCOL )
+
+    filename = "info.pkl"
+    pickle.dump(info, open(f"{path}/{filename}", mode='wb'))  # ,protocol=pickle.HIGHEST_PROTOCOL )
+
+
+def load_model(path=""):
+    global model, session
+    import cloudpickle as pickle
+    model0 = pickle.load(open(f"{path}/model.pkl", mode='rb'))
+
+    model = Model()  # Empty model
+    model.model        = model0.model
+    model.model_pars   = model0.model_pars
+    model.compute_pars = model0.compute_pars
+    session = None
+    return model, session
+
+
+def load_info(path=""):
+    import cloudpickle as pickle, glob
+    dd = {}
+    for fp in glob.glob(f"{path}/*.pkl"):
+        if not "model.pkl" in fp:
+            obj = pickle.load(open(fp, mode='rb'))
+            key = fp.split("/")[-1]
+            dd[key] = obj
+    return dd
+
+
+
+
+####################################################################################################
+############ Do not change #########################################################################
+def get_dataset_tuple(Xtrain, cols_type_received, cols_ref, split=False):
+    """  Split into Tuples = (df1, df2, df3) to feed model, (ie Keras)
+    :param Xtrain:
+    :param cols_type_received:
+    :param cols_ref:
+    :param split: 
+        True :  split data to list of dataframe 
+        False:  return same input of data
+    :return:
+    """
+    if len(cols_ref) <= 1  or not split :
+        return Xtrain
+        
+    Xtuple_train = []
+    for cols_groupname in cols_ref :
+        assert cols_groupname in cols_type_received, "Error missing colgroup in config data_pars[cols_model_type] "
+        cols_i = cols_type_received[cols_groupname]
+        Xtuple_train.append( Xtrain[cols_i] )
+
+    #if len(cols_ref) == 1 :
+    #    return Xtuple_train[0]  ### No tuple
+    #else :
+    return Xtuple_train
+
+
+
+def get_dataset(data_pars=None, task_type="train", **kw):
+    """
+      return tuple of dataframes OR single dataframe
+    """
+    #### log(data_pars)
+    data_type = data_pars.get('type', 'ram')
+
+    ### Sparse columns, Dense Columns
+    cols_type_received     = data_pars.get('cols_model_type2', {} )
+    cols_ref  = list( cols_type_received.keys())
+    split = kw.get('split', False)
+
+    if data_type == "ram":
+        # cols_ref_formodel = ['cols_cross_input', 'cols_deep_input', 'cols_deep_input' ]
+        ### dict  colgroup ---> list of colname
+        cols_type_received     = data_pars.get('cols_model_type2', {} )
+
+        if task_type == "predict":
+            d = data_pars[task_type]
+            Xtrain       = d["X"]
+            Xtuple_train = get_dataset_tuple(Xtrain, cols_type_received, cols_ref, split)
+            return Xtuple_train
+
+        if task_type == "eval":
+            d = data_pars[task_type]
+            Xtrain, ytrain  = d["X"], d["y"]
+            Xtuple_train    = get_dataset_tuple(Xtrain, cols_type_received, cols_ref, split)
+            return Xtuple_train, ytrain
+
+        if task_type == "train":
+            d = data_pars[task_type]
+            Xtrain, ytrain, Xtest, ytest  = d["Xtrain"], d["ytrain"], d["Xtest"], d["ytest"]
+
+            ### dict  colgroup ---> list of df
+            Xtuple_train = get_dataset_tuple(Xtrain, cols_type_received, cols_ref, split)
+            Xtuple_test  = get_dataset_tuple(Xtest, cols_type_received, cols_ref, split)
+
+            log2("Xtuple_train", Xtuple_train)
+
+            return Xtuple_train, ytrain, Xtuple_test, ytest
+
+    elif data_type == "file":
+        raise Exception(f' {data_type} data_type Not implemented ')
+
+    raise Exception(f' Requires  Xtrain", "Xtest", "ytrain", "ytest" ')
+
+
+
+def test():
+    from sklearn.datasets import make_classification
+    from sklearn.model_selection import train_test_split
+
+    X, y = make_classification(n_features=10, n_redundant=0, n_informative=2,
+                               random_state=1, n_clusters_per_class=1)
+    X = pd.DataFrame( X, columns = [ 'col_' +str(i) for i in range(X.shape[1])] )
+    y = pd.DataFrame( y, columns = ['coly'] )
+
+
+    X['colid'] = np.arange(0, len(X))
+    X_train, X_test, y_train, y_test    = train_test_split(X, y)
+    X_train, X_valid, y_train, y_valid  = train_test_split(X_train, y_train, random_state=2021, stratify=y_train)
+
+    #####
+    colid  = 'colid'
+    colnum = [ 'col_0', 'col_3', 'col_4', 'coly']
+    colcat = [ 'col_1', 'col_7', 'col_8', 'col_9']
+    cols_input_type_1 = {
+        'colnum' : colnum,
+        'colcat' : colcat
+    }
+
+    colg_input = {
+      'cols_wide_input':   ['colnum', 'colcat' ],
+      'cols_deep_input':   ['colnum', 'colcat' ],
+    }
+
+    cols_model_type2= {}
+    for colg, colist in colg_input.items() :
+        cols_model_type2[colg] = []
+        for colg_i in colist :
+          cols_model_type2[colg].extend( [i for i in cols_input_type_1[colg_i] if i not in y.columns ]   )
+    ###############################################################################
+    n_sample = 100
+    data_pars = {'n_sample': n_sample,
+                  'cols_input_type': cols_input_type_1,
+
+                  'cols_model_group': ['colnum',
+                                       'colcat',
+                                       # 'colcross_pair'
+                                       ],
+
+                  'cols_model_type2' : cols_model_type2
+
+
+        ### Filter data rows   #######################3############################
+        , 'filter_pars': {'ymax': 2, 'ymin': -1}
+                  }
+
+    data_pars['train'] ={'Xtrain': X_train,  'ytrain': y_train,
+                         'Xtest': X_test,  'ytest': y_test}
+    data_pars['eval'] =  {'X': X_valid,
+                          'y': y_valid}
+    data_pars['predict'] = {'X': X_valid}
+
+    compute_pars = { 'compute_pars' : { # 'epochs': 2,
+                   } }
+
+    #####################################################################
+    # log("test 1")
+    # model_pars = {'model_class': 'TruncatedSVD',
+    #               'model_pars': {
+    #                   "n_components": 3,
+    #                   'n_iter': 2,
+    #                  # 'ratio' :'auto',
+    #             },
+    #             }
+    # test_helper(model_pars, data_pars, compute_pars)
+
+
+
+
+
+
+    log("test Umap")
+
+
+
+
+
+
+    log("test Umap 2")
+
+
+
+
+
+
+
+    log("test Umap 3")
+
+
+
+
+
+    log("test 5")
+
+
+
+
+
+
+
+    
+    # log("test 2 --> CTGAN")
+    # model_pars = {'model_class': 'CTGAN',
+    #               'model_pars': {
+    #                  ## CTGAN
+    #                  'primary_key': colid,
+    #                  'epochs': 1,
+    #                  'batch_size' :100,
+    #                  'generator_dim' : (256, 256, 256),
+    #                  'discriminator_dim' : (256, 256, 256)
+    #             },
+    #             }
+    # compute_pars = { 
+    #     'compute_pars' : {}
+    #     }
+    # test_helper(model_pars, data_pars, compute_pars)
+
+
+    # log("test 3 --> TVAE")
+    # model_pars = {'model_class': 'TVAE',
+    #               'model_pars': { 
+    #                   ## TVAE
+    #                  'primary_key': colid,
+    #                  'epochs': 1,
+    #                  'batch_size' :100,
+    #             },
+    #             }
+    # compute_pars = { 
+    #     'compute_pars' : {}
+    #     }
+    # test_helper(model_pars, data_pars, compute_pars)
+
+    # log("test 4 --> PAR")
+    # entity_columns = [colid]
+    # context_columns = None
+    # sequence_index = None
+    # model_pars = {'model_class': 'PAR',
+    #               'model_pars': {
+    #                  ## PAR
+    #                  'epochs': 1,
+    #                  'entity_columns': entity_columns,
+    #                  'context_columns': context_columns,
+    #                  'sequence_index': sequence_index
+    #             },
+    #             }
+    # compute_pars = { 
+    #     'compute_pars' : {}
+    #     }
+    # test_helper(model_pars, data_pars, compute_pars)
+
+    log("test 6 --> SMOTE")
+    model_pars = {'model_class': 'SMOTE',
+                  'model_pars': {
+                     ## SMOTE
+                },
+                }
+    compute_pars = { 
+        'compute_pars' : {}
+        }
+    test_helper(model_pars, data_pars, compute_pars)
+
+
+
+def test_helper(model_pars, data_pars, compute_pars):
+    global model, session
+    root  = "ztmp/"
+    model = Model(model_pars=model_pars, data_pars=data_pars, compute_pars=compute_pars)
+
+    log('\n\nTraining the model')
+    fit(data_pars=data_pars, compute_pars=compute_pars, out_pars=None)
+
+    log('Predict data..')
+    Xnew = transform(Xpred=None, data_pars=data_pars, compute_pars=compute_pars)
+    log(f'Xnew', Xnew)
+
+    log('Evaluating the model..')
+    log(eval(data_pars=data_pars, compute_pars=compute_pars))
+
+    log('Saving model..')
+    save(path= root + '/model_dir/')
+
+    log('Load model..')
+    model, session = load_model(path= root + "/model_dir/")
+    log(model)
+
+
+
+
+if __name__ == "__main__":
+    import fire
+    fire.Fire()
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -120,341 +732,6 @@ def pd_sample_imblearn(df=None, col=None, pars=None):
        prefix :  col_new  ###  for training input data
     }
     return df2, col_pars
-
-
-
-
-
-#####################################################################################
-class Model(object):
-    def __init__(self, model_pars=None, data_pars=None, compute_pars=None):
-        self.model_pars, self.compute_pars, self.data_pars = model_pars, compute_pars, data_pars
-
-        if model_pars is None:
-            self.model = None
-        else:
-            model_class = globals()[model_pars['model_class']]
-            self.model  = model_class(**model_pars['model_pars'])
-            if VERBOSE: log(model_class, self.model)
-
-
-def fit(data_pars=None, compute_pars=None, out_pars=None, **kw):
-    """
-    """
-    global model, session
-    session = None  # Session type for compute
-    Xtrain, ytrain, Xtest, ytest = get_dataset(data_pars, task_type="train")
-    if VERBOSE: log(Xtrain.shape, model.model)
-
-    list_unsupervised = [  'TVAE', 'CTGAN', 'PAR'  ]
-
-    if ytrain is not None and model.model_pars['model_class'] not in list_unsupervised :  ###with label
-       model.model.fit(Xtrain, ytrain, **compute_pars.get("compute_pars", {}))
-
-    else :
-       model.model.fit(Xtrain, **compute_pars.get("compute_pars", {}))
-
-
-def eval(data_pars=None, compute_pars=None, out_pars=None, **kw):
-    """
-       Return metrics of the model when fitted.
-    """
-    global model, session
-    from sdv.evaluation import evaluate
-
-    data_pars['train'] = True
-    Xval, yval = get_dataset(data_pars, task_type="eval")
-
-    Xnew = transform(Xval, data_pars, compute_pars, out_pars)
-
-    # log(data_pars)
-    mpars = compute_pars.get("metrics_pars", {'aggregate': True})
-    evals = evaluate(Xnew, Xval, **mpars )
-
-    return evals
-
-
-def transform(Xpred=None, data_pars={}, compute_pars={}, out_pars={}, **kw):
-    """ Geenrate Xtrain  ----.> Xtrain_new
-    :param Xpred:
-    :param data_pars:
-    :param compute_pars:
-    :param out_pars:
-    :param kw:
-    :return:
-    """
-    global model, session
-    post_process_fun = model.model_pars.get('post_process_fun', None)
-    if post_process_fun is None:
-        def post_process_fun(y):
-            return y
-
-    #######
-    Xnew= None
-    if model.model_pars['model_class'] in ['CTGAN', 'TVAE', 'PAR'] :
-       Xnew = model.model.sample(compute_pars.get('n_sample_generation', 100) )
-
-    else :  ### Sampler
-        if Xpred is None:
-           data_pars['train'] = False
-           Xpred, ypred = get_dataset(data_pars, task_type="eval")
-           log(Xpred, ypred)
-           Xnew = model.model.fit_resample( Xpred, ypred, **compute_pars.get('compute_pars', {}) )
-
-    log("generated data", Xnew)
-    return Xnew
-
-
-
-def predict(Xpred=None, data_pars={}, compute_pars={}, out_pars={}, **kw):
-    global model, session
-    pass
-    ### No need
-
-
-def reset():
-    global model, session
-    model, session = None, None
-
-
-def save(path=None, info=None):
-    global model, session
-    import cloudpickle as pickle
-    os.makedirs(path, exist_ok=True)
-
-    filename = "model.pkl"
-    pickle.dump(model, open(f"{path}/{filename}", mode='wb'))  # , protocol=pickle.HIGHEST_PROTOCOL )
-
-    filename = "info.pkl"
-    pickle.dump(info, open(f"{path}/{filename}", mode='wb'))  # ,protocol=pickle.HIGHEST_PROTOCOL )
-
-
-def load_model(path=""):
-    global model, session
-    import cloudpickle as pickle
-    model0 = pickle.load(open(f"{path}/model.pkl", mode='rb'))
-
-    model = Model()  # Empty model
-    model.model = model0.model
-    model.model_pars = model0.model_pars
-    model.compute_pars = model0.compute_pars
-    session = None
-    return model, session
-
-
-def load_info(path=""):
-    import cloudpickle as pickle, glob
-    dd = {}
-    for fp in glob.glob(f"{path}/*.pkl"):
-        if not "model.pkl" in fp:
-            obj = pickle.load(open(fp, mode='rb'))
-            key = fp.split("/")[-1]
-            dd[key] = obj
-    return dd
-
-
-def preprocess(prepro_pars):
-    if prepro_pars['type'] == 'test':
-        from sklearn.datasets import make_classification
-        from sklearn.model_selection import train_test_split
-
-        X, y = make_classification(n_features=10, n_redundant=0, n_informative=2,
-                                   random_state=1, n_clusters_per_class=1)
-
-        # log(X,y)
-        Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
-        return Xtrain, ytrain, Xtest, ytest
-
-    if prepro_pars['type'] == 'train':
-        from sklearn.model_selection import train_test_split
-        df = pd.read_csv(prepro_pars['path'])
-        dfX = df[prepro_pars['colX']]
-        dfy = df[prepro_pars['coly']]
-        Xtrain, Xtest, ytrain, ytest = train_test_split(dfX.values, dfy.values,
-                                                        stratify=dfy.values,test_size=0.1)
-        return Xtrain, ytrain, Xtest, ytest
-
-    else:
-        df = pd.read_csv(prepro_pars['path'])
-        dfX = df[prepro_pars['colX']]
-
-        Xtest, ytest = dfX, None
-        return None, None, Xtest, ytest
-
-
-####################################################################################################
-############ Do not change #########################################################################
-def get_dataset(data_pars=None, task_type="train", **kw):
-    """
-      "ram"  : 
-      "file" :
-    """
-    # log(data_pars)
-    data_type  = data_pars.get('type', 'ram')
-    cols_type  = data_pars.get('cols_model_type2', {})   #### Split input by Sparse, Continous
-    cols_model = data_pars['cols_model']
-    coly       = data_pars['coly']
-
-    log3("Cols Type:", cols_type)
-
-    if data_type == "ram":
-        if task_type == "predict":
-            d = data_pars[task_type]
-            return d["X"]
-
-        if task_type == "eval":
-            d = data_pars[task_type]
-            return d["X"], d["y"]
-
-        if task_type == "train":
-            d = data_pars[task_type]
-            return d["Xtrain"], d["ytrain"], d["Xtest"], d["ytest"]
-
-    elif data_type == "file":
-        raise Exception(f' {data_type} data_type Not implemented ')
-
-    raise Exception(f' Requires  Xtrain", "Xtest", "ytrain", "ytest" ')
-
-
-def get_params_sklearn(deep=False):
-    return model.model.get_params(deep=deep)
-
-
-def get_params(param_pars={}, **kw):
-    import json
-    # from jsoncomment import JsonComment ; json = JsonComment()
-    pp = param_pars
-    choice = pp['choice']
-    config_mode = pp['config_mode']
-    data_path = pp['data_path']
-
-    if choice == "json":
-        cf = json.load(open(data_path, mode='r'))
-        cf = cf[config_mode]
-        return cf['model_pars'], cf['data_pars'], cf['compute_pars'], cf['out_pars']
-
-    else:
-        raise Exception(f"Not support choice {choice} yet")
-
-
-def test():
-    from sklearn.datasets import make_classification
-    from sklearn.model_selection import train_test_split
-
-    X, y = make_classification(n_features=10, n_redundant=0, n_informative=2,
-                               random_state=1, n_clusters_per_class=1)
-    X = pd.DataFrame( X, columns = [ 'col_' +str(i) for i in range(X.shape[1])] )
-    y = pd.DataFrame( y, columns = ['coly'] )
-
-    X['colid'] = np.arange(0, len(X))
-    Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
-
-    #####
-    colid  = 'colid'
-    colnum = [ 'col_0', 'col_3', 'col_4', 'coly']
-    colcat = [ 'col_1', 'col_7', 'col_8', 'col_9']
-    cols_input_type_1 = {
-        'colnum' : colnum,
-        'colcat' : colcat
-    }
-
-    colg_input = {
-      'cols_wide_input':   ['colnum', 'colcat' ],
-      'cols_deep_input':   ['colnum', 'colcat' ],
-    }
-
-    cols_model_type2= {}
-    for colg, colist in colg_input.items() :
-        cols_model_type2[colg] = []
-        for colg_i in colist :
-          cols_model_type2[colg].extend( cols_input_type_1[colg_i] )
-    ###############################################################################
-    data_pars = {'n_sample': 100,
-                  'cols_input_type': cols_input_type_1,
-                  'cols_model_group': ['colnum', 'colcat',  ],
-                  'cols_model_type2' : cols_model_type2
-
-        ,'cols_model' : colnum + colcat
-        ,'coly' : 'y'
-
-        ### Filter data rows   #######################3############################
-        , 'filter_pars': {'ymax': 2, 'ymin': -1}
-                  }
-
-    data_pars['train'] ={'Xtrain': Xtrain,  'ytrain': ytrain,
-                          'Xtest': Xtest,   'ytest': ytest}
-    data_pars['eval'] =  {'X': Xtest,
-                          'y': ytest}
-    data_pars['predict'] = {'X': Xtest}
-
-    compute_pars = { 'compute_pars' : {
-                    } }
-
-    #####################################################################
-    log("test 2")
-    model_pars = {'model_class': 'SMOTE',
-                  'model_pars': {
-                     # 'ratio' :'auto',
-                },
-                }
-    test_helper(model_pars, data_pars, compute_pars)
-
-
-    log("test 1")
-    model_pars = {'model_class': 'CTGAN',
-                  'model_pars': {
-                     ## CTGAN
-                     'primary_key': colid,
-                     'epochs': 1,
-                     'batch_size' :100,
-                     'generator_dim' : (256, 256, 256),
-                     'discriminator_dim' : (256, 256, 256)
-                },
-                }
-    test_helper(model_pars, data_pars, compute_pars)
-
-
-def test_helper(model_pars, data_pars, compute_pars):
-    global model, session
-    root  = "ztmp/"
-    model = Model(model_pars=model_pars, data_pars=data_pars, compute_pars=compute_pars)
-
-    log('\n\nTraining the model..')
-    fit(data_pars=data_pars, compute_pars=compute_pars, out_pars=None)
-
-    log('Predict data..')
-    Xnew = transform(Xpred=None, data_pars=data_pars, compute_pars=compute_pars)
-    log(f'Xnew', Xnew)
-
-    log('Evaluating the model..')
-    log(eval(data_pars=data_pars, compute_pars=compute_pars))
-
-    log('Saving model..')
-    save(path= root + '/model_dir/')
-
-    log('Load model..')
-    model, session = load_model(path= root + "/model_dir/")
-    log(model)
-
-
-
-
-if __name__ == "__main__":
-    import fire
-    fire.Fire()
-    
-    
-    
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -541,8 +818,6 @@ def pd_augmentation_sdv(df, col=None, pars={})  :
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330
 # -*- coding: utf-8 -*-
 """
-
-
 """
 import warnings
 warnings.filterwarnings('ignore')
@@ -574,7 +849,7 @@ def log_pd(df, *s, n=0, m=1):
     print(sjump,  df.head(n), flush=True)
 
 
-from util_feature import  save, load_function_uri, load, save_features, params_check
+from util_feature import load_function_uri, load, save_features, params_check
 ####################################################################################################
 ####################################################################################################
 def pd_export(df, col, pars):
@@ -827,8 +1102,6 @@ def test():
     
     
 """
-
-
 def pd_generic_transform(df, col=None, pars={}, model=None)  :
  
      Transform or Samples using  model.fit()   model.sample()  or model.transform()
@@ -859,7 +1132,6 @@ def pd_generic_transform(df, col=None, pars={}, model=None)  :
                  log('model saved at: ' + path_model_save  )
             except:
                  log('saving model failed: ', path_model_save)
-
     log('##### Generating Samples/transform #############')    
     if model_method == 'sample' :
         n_samples =pars.get('n_samples', max(1, 0.10 * len(df) ) )
@@ -876,10 +1148,4 @@ def pd_generic_transform(df, col=None, pars={}, model=None)  :
         log('###### df transform save on disk', pars['path_newdata'] )    
     
     return model, df_new, col, pars
-
-
-
 """
-    
-    
-    

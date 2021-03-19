@@ -49,20 +49,16 @@ def logd(*s, n=0, m=0):
         print(*s, fluhs=True)
 
 ####################################################################################################
+import datetime as dt
+
 try:
-    from tsfresh import extract_relevant_features, extract_features
-    from tsfresh.utilities.dataframe_functions import roll_time_series
     from deltapy import transform, interact, mapper, extract
-    import pandasvault, tsfel, datetime as dt
+    import pandasvault, tsfel
 
 except:
-    os.system(" pip install  tsfresh pandasvault tsfel")
-    os.system(" pip install deltapy ")
-
-    from tsfresh import extract_relevant_features, extract_features
-    from tsfresh.utilities.dataframe_functions import roll_time_series
+    os.system(" pip install deltapy pandasvault ")
     from deltapy import transform, interact, mapper, extract
-    import pandasvault, datetime as dt
+    import pandasvault
 
 
 ###########################################################################################
@@ -366,6 +362,9 @@ def pd_ts_difference(df: pd.DataFrame, cols: list=None, pars: dict=None):
 
 
 def pd_ts_tsfresh_features(df: pd.DataFrame, cols: list=None, pars: dict=None):
+    from tsfresh import extract_relevant_features, extract_features
+    from tsfresh.utilities.dataframe_functions import roll_time_series
+
     single_row_df         = df[cols]
     single_row_df["time"] = range(0, len(single_row_df.index))
     id_col = pars.get("id_col", "id")
@@ -422,114 +421,6 @@ def test_get_sampledata(url="https://github.com/firmai/random-assets-two/raw/mas
     df["Date"] = pd.to_datetime(df["Date"])
     df         = df.set_index("Date")
     return df
-
-
-def test_deltapy_get_method(df):
-    prepro_list = [
-        {'name': 'deltapy.transform::robust_scaler', 'pars': {'drop': ["Close_1"]}},
-        {'name': 'deltapy.transform::standard_scaler', 'pars': {'drop': ["Close_1"]}},
-        {'name': 'deltapy.transform::fast_fracdiff', 'pars': {'cols': ["Close", "Open"], 'd': 0.5}},
-        {'name': 'deltapy.transform::operations', 'pars': {'features': ["Close"]}},
-        {'name': 'deltapy.transform::triple_exponential_smoothing',
-         'pars': {'cols': ["Close"], 'slen': 12, 'alpha': .2, 'beta': .5, 'gamma': .5, 'n_preds': 0}},
-        {'name': 'deltapy.transform::naive_dec', 'pars': {'columns': ["Close", "Open"]}},
-        {'name': 'deltapy.transform::bkb', 'pars': {'cols': ["Close"]}},
-        {'name': 'deltapy.transform::butter_lowpass_filter', 'pars': {'cols': ["Close"], 'cutoff': 4}},
-        {'name': 'deltapy.transform::instantaneous_phases', 'pars': {'cols': ["Close"]}},
-        {'name': 'deltapy.transform::kalman_feat', 'pars': {'cols': ["Close"]}},
-        {'name': 'deltapy.transform::perd_feat', 'pars': {'cols': ["Close"]}},
-        {'name': 'deltapy.transform::fft_feat', 'pars': {'cols': ["Close"]}},
-        {'name': 'deltapy.transform::harmonicradar_cw', 'pars': {'cols': ["Close"], 'fs': 0.3, 'fc': 0.2}},
-        {'name': 'deltapy.transform::saw', 'pars': {'cols': ["Close", "Open"]}},
-        {'name': 'deltapy.transform::multiple_rolling', 'pars': {'columns': ["Close"]}},
-        {'name': 'deltapy.transform::multiple_lags', 'pars': {'columns': ["Close"], 'start': 1, 'end': 3}},
-
-        {'name': 'deltapy.interact::lowess',
-         'pars': {'cols': ["Open", "Volume"], 'y': df["Close"], 'f': 0.25, 'iter': 3}},
-
-        {'name': 'deltapy.interact::autoregression', 'pars': {}},
-        {'name': 'deltapy.interact::muldiv', 'pars': {'feature_list': ["Close", "Open"]}},
-        {'name': 'deltapy.interact::decision_tree_disc', 'pars': {'cols': ["Close"]}},
-        {'name': 'deltapy.interact::quantile_normalize', 'pars': {'drop': ["Close"]}},
-        {'name': 'deltapy.interact::tech', 'pars': {}},
-        {'name': 'deltapy.interact::genetic_feat', 'pars': {}},
-
-        {'name': 'deltapy.mapper::pca_feature', 'pars': {'variance_or_components': 0.80, 'drop_cols': ["Close_1"]}},
-        {'name': 'deltapy.mapper::cross_lag', 'pars': {}},
-        {'name': 'deltapy.mapper::a_chi', 'pars': {}},
-        {'name': 'deltapy.mapper::encoder_dataset', 'pars': {'drop': ["Close_1"], 'dimesions': 15}},
-        {'name': 'deltapy.mapper::lle_feat', 'pars': {'drop': ["Close_1"], 'components': 4}},
-        {'name': 'deltapy.mapper::feature_agg', 'pars': {'drop': ["Close_1"], 'components': 4}},
-        {'name': 'deltapy.mapper::neigh_feat', 'pars': {'drop': ["Close_1"], 'neighbors': 4}},
-
-        {'name': 'deltapy.extract::abs_energy', 'pars': {}},
-        {'name': 'deltapy.extract::cid_ce', 'pars': {'normalize': True}},
-        {'name': 'deltapy.extract::mean_abs_change', 'pars': {}},
-        {'name': 'deltapy.extract::mean_second_derivative_central', 'pars': {}},
-        {'name': 'deltapy.extract::variance_larger_than_standard_deviation', 'pars': {}},
-        {'name': 'deltapy.extract::symmetry_looking', 'pars': {}},
-        {'name': 'deltapy.extract::has_duplicate_max', 'pars': {}},
-        {'name': 'deltapy.extract::partial_autocorrelation', 'pars': {}},
-        {'name': 'deltapy.extract::augmented_dickey_fuller', 'pars': {}},
-        {'name': 'deltapy.extract::gskew', 'pars': {}},
-        {'name': 'deltapy.extract::stetson_mean', 'pars': {}},
-        {'name': 'deltapy.extract::length', 'pars': {}},
-        {'name': 'deltapy.extract::count_above_mean', 'pars': {}},
-        {'name': 'deltapy.extract::longest_strike_below_mean', 'pars': {}},
-        {'name': 'deltapy.extract::wozniak', 'pars': {}},
-        {'name': 'deltapy.extract::last_location_of_maximum', 'pars': {}},
-        {'name': 'deltapy.extract::fft_coefficient', 'pars': {}},
-        {'name': 'deltapy.extract::ar_coefficient', 'pars': {}},
-        {'name': 'deltapy.extract::index_mass_quantile', 'pars': {}},
-        {'name': 'deltapy.extract::number_cwt_peaks', 'pars': {}},
-        {'name': 'deltapy.extract::spkt_welch_density', 'pars': {}},
-        {'name': 'deltapy.extract::linear_trend_timewise', 'pars': {}},
-        {'name': 'deltapy.extract::c3', 'pars': {}},
-        {'name': 'deltapy.extract::binned_entropy', 'pars': {}},
-        {'name': 'deltapy.extract::svd_entropy', 'pars': {}},
-        {'name': 'deltapy.extract::hjorth_complexity', 'pars': {}},
-        {'name': 'deltapy.extract::max_langevin_fixed_point', 'pars': {}},
-        {'name': 'deltapy.extract::percent_amplitude', 'pars': {}},
-        {'name': 'deltapy.extract::cad_prob', 'pars': {}},
-        {'name': 'deltapy.extract::zero_crossing_derivative', 'pars': {}},
-        {'name': 'deltapy.extract::detrended_fluctuation_analysis', 'pars': {}},
-        {'name': 'deltapy.extract::fisher_information', 'pars': {}},
-        {'name': 'deltapy.extract::higuchi_fractal_dimension', 'pars': {}},
-        {'name': 'deltapy.extract::petrosian_fractal_dimension', 'pars': {}},
-        {'name': 'deltapy.extract::hurst_exponent', 'pars': {}},
-        {'name': 'deltapy.extract::largest_lyauponov_exponent', 'pars': {}},
-        {'name': 'deltapy.extract::whelch_method', 'pars': {}},
-        {'name': 'deltapy.extract::find_freq', 'pars': {}},
-        {'name': 'deltapy.extract::flux_perc', 'pars': {}},
-        {'name': 'deltapy.extract::range_cum_s', 'pars': {}},
-        {'name': 'deltapy.extract::structure_func',
-         'pars': {'param': {"Volume": df["Volume"].values, "Open": df["Open"].values}}},
-        {'name': 'deltapy.extract::kurtosis', 'pars': {}},
-        {'name': 'deltapy.extract::stetson_k', 'pars': {}}
-    ]
-
-    return prepro_list
-
-
-def test_deltapy_all2():
-    df          = test_get_sampledata()
-    prepro_list = test_deltapy_get_method(df)
-
-    for model in prepro_list:
-        pars = {'name': model['name'],
-                'pars': model['pars']
-                }
-
-        df_input = copy.deepcopy(df)
-        if 'a_chi' in pars['name']:
-            # Normalize the input for the chi, CHi model
-            df_input = (df_input - df_input.min()) / (df_input.max() - df_input.min())
-
-        elif 'extract' in pars['name']:
-            df_input = df_input["Close"]
-
-        df_out, col_pars = pd_ts_deltapy_generic(df=df_input, pars=pars)
-
 
 
 def test_deltapy_all():
@@ -652,12 +543,136 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def test_deltapy_get_method(df):
+    prepro_list = [
+        {'name': 'deltapy.transform::robust_scaler', 'pars': {'drop': ["Close_1"]}},
+        {'name': 'deltapy.transform::standard_scaler', 'pars': {'drop': ["Close_1"]}},
+        {'name': 'deltapy.transform::fast_fracdiff', 'pars': {'cols': ["Close", "Open"], 'd': 0.5}},
+        {'name': 'deltapy.transform::operations', 'pars': {'features': ["Close"]}},
+        {'name': 'deltapy.transform::triple_exponential_smoothing',
+         'pars': {'cols': ["Close"], 'slen': 12, 'alpha': .2, 'beta': .5, 'gamma': .5, 'n_preds': 0}},
+        {'name': 'deltapy.transform::naive_dec', 'pars': {'columns': ["Close", "Open"]}},
+        {'name': 'deltapy.transform::bkb', 'pars': {'cols': ["Close"]}},
+        {'name': 'deltapy.transform::butter_lowpass_filter', 'pars': {'cols': ["Close"], 'cutoff': 4}},
+        {'name': 'deltapy.transform::instantaneous_phases', 'pars': {'cols': ["Close"]}},
+        {'name': 'deltapy.transform::kalman_feat', 'pars': {'cols': ["Close"]}},
+        {'name': 'deltapy.transform::perd_feat', 'pars': {'cols': ["Close"]}},
+        {'name': 'deltapy.transform::fft_feat', 'pars': {'cols': ["Close"]}},
+        {'name': 'deltapy.transform::harmonicradar_cw', 'pars': {'cols': ["Close"], 'fs': 0.3, 'fc': 0.2}},
+        {'name': 'deltapy.transform::saw', 'pars': {'cols': ["Close", "Open"]}},
+        {'name': 'deltapy.transform::multiple_rolling', 'pars': {'columns': ["Close"]}},
+        {'name': 'deltapy.transform::multiple_lags', 'pars': {'columns': ["Close"], 'start': 1, 'end': 3}},
+
+        {'name': 'deltapy.interact::lowess',
+         'pars': {'cols': ["Open", "Volume"], 'y': df["Close"], 'f': 0.25, 'iter': 3}},
+
+        {'name': 'deltapy.interact::autoregression', 'pars': {}},
+        {'name': 'deltapy.interact::muldiv', 'pars': {'feature_list': ["Close", "Open"]}},
+        {'name': 'deltapy.interact::decision_tree_disc', 'pars': {'cols': ["Close"]}},
+        {'name': 'deltapy.interact::quantile_normalize', 'pars': {'drop': ["Close"]}},
+        {'name': 'deltapy.interact::tech', 'pars': {}},
+        {'name': 'deltapy.interact::genetic_feat', 'pars': {}},
+
+        {'name': 'deltapy.mapper::pca_feature', 'pars': {'variance_or_components': 0.80, 'drop_cols': ["Close_1"]}},
+        {'name': 'deltapy.mapper::cross_lag', 'pars': {}},
+        {'name': 'deltapy.mapper::a_chi', 'pars': {}},
+        {'name': 'deltapy.mapper::encoder_dataset', 'pars': {'drop': ["Close_1"], 'dimesions': 15}},
+        {'name': 'deltapy.mapper::lle_feat', 'pars': {'drop': ["Close_1"], 'components': 4}},
+        {'name': 'deltapy.mapper::feature_agg', 'pars': {'drop': ["Close_1"], 'components': 4}},
+        {'name': 'deltapy.mapper::neigh_feat', 'pars': {'drop': ["Close_1"], 'neighbors': 4}},
+
+        {'name': 'deltapy.extract::abs_energy', 'pars': {}},
+        {'name': 'deltapy.extract::cid_ce', 'pars': {'normalize': True}},
+        {'name': 'deltapy.extract::mean_abs_change', 'pars': {}},
+        {'name': 'deltapy.extract::mean_second_derivative_central', 'pars': {}},
+        {'name': 'deltapy.extract::variance_larger_than_standard_deviation', 'pars': {}},
+        {'name': 'deltapy.extract::symmetry_looking', 'pars': {}},
+        {'name': 'deltapy.extract::has_duplicate_max', 'pars': {}},
+        {'name': 'deltapy.extract::partial_autocorrelation', 'pars': {}},
+        {'name': 'deltapy.extract::augmented_dickey_fuller', 'pars': {}},
+        {'name': 'deltapy.extract::gskew', 'pars': {}},
+        {'name': 'deltapy.extract::stetson_mean', 'pars': {}},
+        {'name': 'deltapy.extract::length', 'pars': {}},
+        {'name': 'deltapy.extract::count_above_mean', 'pars': {}},
+        {'name': 'deltapy.extract::longest_strike_below_mean', 'pars': {}},
+        {'name': 'deltapy.extract::wozniak', 'pars': {}},
+        {'name': 'deltapy.extract::last_location_of_maximum', 'pars': {}},
+        {'name': 'deltapy.extract::fft_coefficient', 'pars': {}},
+        {'name': 'deltapy.extract::ar_coefficient', 'pars': {}},
+        {'name': 'deltapy.extract::index_mass_quantile', 'pars': {}},
+        {'name': 'deltapy.extract::number_cwt_peaks', 'pars': {}},
+        {'name': 'deltapy.extract::spkt_welch_density', 'pars': {}},
+        {'name': 'deltapy.extract::linear_trend_timewise', 'pars': {}},
+        {'name': 'deltapy.extract::c3', 'pars': {}},
+        {'name': 'deltapy.extract::binned_entropy', 'pars': {}},
+        {'name': 'deltapy.extract::svd_entropy', 'pars': {}},
+        {'name': 'deltapy.extract::hjorth_complexity', 'pars': {}},
+        {'name': 'deltapy.extract::max_langevin_fixed_point', 'pars': {}},
+        {'name': 'deltapy.extract::percent_amplitude', 'pars': {}},
+        {'name': 'deltapy.extract::cad_prob', 'pars': {}},
+        {'name': 'deltapy.extract::zero_crossing_derivative', 'pars': {}},
+        {'name': 'deltapy.extract::detrended_fluctuation_analysis', 'pars': {}},
+        {'name': 'deltapy.extract::fisher_information', 'pars': {}},
+        {'name': 'deltapy.extract::higuchi_fractal_dimension', 'pars': {}},
+        {'name': 'deltapy.extract::petrosian_fractal_dimension', 'pars': {}},
+        {'name': 'deltapy.extract::hurst_exponent', 'pars': {}},
+        {'name': 'deltapy.extract::largest_lyauponov_exponent', 'pars': {}},
+        {'name': 'deltapy.extract::whelch_method', 'pars': {}},
+        {'name': 'deltapy.extract::find_freq', 'pars': {}},
+        {'name': 'deltapy.extract::flux_perc', 'pars': {}},
+        {'name': 'deltapy.extract::range_cum_s', 'pars': {}},
+        {'name': 'deltapy.extract::structure_func',
+         'pars': {'param': {"Volume": df["Volume"].values, "Open": df["Open"].values}}},
+        {'name': 'deltapy.extract::kurtosis', 'pars': {}},
+        {'name': 'deltapy.extract::stetson_k', 'pars': {}}
+    ]
+
+    return prepro_list
+
+
+def test_deltapy_all2():
+    df          = test_get_sampledata()
+    prepro_list = test_deltapy_get_method(df)
+
+    for model in prepro_list:
+        pars = {'name': model['name'],
+                'pars': model['pars']
+                }
+
+        df_input = copy.deepcopy(df)
+        if 'a_chi' in pars['name']:
+            # Normalize the input for the chi, CHi model
+            df_input = (df_input - df_input.min()) / (df_input.max() - df_input.min())
+
+        elif 'extract' in pars['name']:
+            df_input = df_input["Close"]
+
+        df_out, col_pars = pd_ts_deltapy_generic(df=df_input, pars=pars)
+
+
+
+
 def m5_dataset():
     """
      https://www.kaggle.com/ratan123/m5-forecasting-lightgbm-with-timeseries-splits
 
 
     """
+    import gc
     def read_df():
         print('Reading files...')
         calendar               = pd.read_csv('/kaggle/input/m5-forecasting-accuracy/calendar.csv')

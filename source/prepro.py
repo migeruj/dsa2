@@ -103,7 +103,7 @@ def prepro_save(prefix, pars, df_new, cols_new, prepro) -> (pd.DataFrame, dict) 
     ###### Training & Inference time : df + new column names ##########################
     col_pars = {"prefix" : prefix , "path" :   pars.get("path_pipeline_export", pars.get("path_pipeline", None)) }
     col_pars["cols_new"] = {
-        "col_myfun" :  cols_new  ### new column list
+        prefix :  cols_new  ### new column list
     }
     return df_new, col_pars
 
