@@ -105,7 +105,8 @@ def multi_lightgbm() :
         ### LightGBM API model  ########################################
         'model_class': model_name    ## ACTUAL Class name for model_sklearn.py
         ,'model_pars'       : {'objective': 'multiclass','num_class':4,'metric':'multi_logloss',
-                                'learning_rate':0.03,'boosting_type':'gbdt'
+                                'learning_rate':0.03,'boosting_type':'gbdt',
+                                "n_estimators": 3,
                               }
 
         ### After prediction  ##########################################
@@ -142,6 +143,8 @@ def multi_lightgbm() :
           #  'coldate',
           #  'coltext',
           'cols_model_group': [ 'colnum_bin','colcat_bin']
+
+          ,'cols_model_type' : {}
 
           ### Filter data rows   #####################################
          ,'filter_pars': { 'ymax' : 5 ,'ymin' : -1 }

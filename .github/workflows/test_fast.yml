@@ -76,15 +76,32 @@ jobs:
       run: |
            python -c "import core_run;   print(core_run)"
            python -c "import os, numpy ; print(os)"
+           pip list
            # python -c "import tensorflow, torch ; print(tensorflow); print(torch)"
 
 
     ########  Test running 
-    - name: run_all
-      run: |
-          mkdir -p    /home/runner/work/log_tmp/  
-          chmod -R 777 . && ztest/run_fast.sh    2>&1 | tee   /home/runner/work/log_tmp/run_fast.py
+    #- name: run_all
+    #  run: |
+    #      mkdir -p    /home/runner/work/log_tmp/  
+    #      chmod -R 777 . && ztest/run_fast.sh    2>&1 | tee   /home/runner/work/log_tmp/run_fast.py
 
+    - name: python titanic_classifier.py  train
+      # continue-on-error: true
+      run:  |
+            python titanic_classifier.py  train    --nsample 1000     
+            python titanic_classifier.py  predict  --nsample 1000   
+
+         
+
+    - name: python example/classifier/classifier_multi.py  train    --nsample 10000   
+      # continue-on-error: true
+      run:  |
+            python example/classifier/classifier_multi.py  train    --nsample 10000   
+            echo ""    
+
+ 
+ 
 
 
     #- name: ml_test_function

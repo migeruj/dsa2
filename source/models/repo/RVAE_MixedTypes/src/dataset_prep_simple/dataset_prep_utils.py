@@ -1,11 +1,15 @@
 
 import sys
-sys.path.append("..")
 
 import pandas as pd
 import numpy as np
 import json
 import os, errno
+
+# Append src to path, note that sys.path.append("..") won't work
+src_path     = os.path.dirname(os.path.dirname(__file__))
+sys.path.append(src_path)
+
 from cleaningbenchmark.NoiseModels.RandomNoise import CategoricalNoiseModel, GaussianNoiseModel, LaplaceNoiseModel, ZipfNoiseModel
 from cleaningbenchmark.NoiseModels.RandomNoise import MixedNoiseModel, ImageSaltnPepper, ImageAdditiveGaussianNoise
 from cleaningbenchmark.NoiseModels.RandomNoise import LogNormalNoiseModel, Mixture2GaussiansNoiseModel
@@ -91,7 +95,7 @@ def save_datasets(path_saving, df_data, train_idxs, validation_idxs, test_idxs,
     # dirty data
     df_train_noised = noised_data_df.iloc[train_idxs,:]
     df_train_noised = df_train_noised.reset_index(drop=True)
-
+    
     # ground-truth of errors
     df_changes_train, _, _ = pd_df_diff(df_train, df_train_noised)
 
@@ -395,6 +399,8 @@ def dirtify_and_save_mixed_simple(df_data, run_stats, path_to_folder):
     # dictionaries mapping the indexes between full dataframe and helper structures
     idx_map_cat = dict([(df_data.columns.get_loc(col), i) for i, col in enumerate(run_stats["cat_cols_names"])])
     idx_map_num = dict([(df_data.columns.get_loc(col), i) for i, col in enumerate(run_stats["num_cols_names"])])
+    # print("\n\nidx_map_num : ",idx_map_num,"\n\n")
+    # print("\n\nidx_map_cat : ",idx_map_cat,"\n\n")
 
     ## categorical columns definition
     dict_categories_per_feat = dict([(feat_name, [x for x in df_data[feat_name].cat.categories.tolist()]) #  if x != '?'
@@ -474,6 +480,11 @@ def dirtify_and_save_mixed_simple(df_data, run_stats, path_to_folder):
     noised_data_df[run_stats["cat_cols_names"]].apply(lambda x: x.astype('category'))
 
     ## get ground-truth
+    # print("*-**************************************")
+    # print(df_data.wine_type)
+    # print("2222222222222222222222222222")
+    # print(noised_data_df.wine_type)
+
     df_changes, cells_changed, tuples_changed = pd_df_diff(df_data, noised_data_df)
 
     cells_changed = cells_changed.astype(int)

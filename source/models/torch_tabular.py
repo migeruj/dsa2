@@ -6,16 +6,13 @@ python torch_tabular.py test --nrows 1000
 
 
 https://github.com/arita37/pytorch_tabular
-
-
-BUg  
-
-anaconda3\envs\dsa2\lib\site-packages\pytorch_tabular\tabular_model.py"
-# Need to add max_epochs, min_epochs to fix the bug
-tabular_model._prepare_trainer(10, 1)
+https://github.com/manujosephv/pytorch_tabular/tree/main/pytorch_tabular/models
 
 
 
+Bug  
+    cmd ="python -m pip install git+https://github.com/manujosephv/pytorch_tabular.git@82a30fe2ad1cc8c4f883d86d5f63925e67a0a015 --no-deps"
+ 
 The core model which orchestrates everything from initializing the datamodule, the model, trainer, etc.
 Args:
     config (Optional[Union[DictConfig, str]], optional): Single OmegaConf DictConfig object or
@@ -33,45 +30,73 @@ Args:
         Typically used when providing Custom Models
 
 """
-import os, sys,  numpy as np,  pandas as pd, wget, copy
+import os, sys,copy, pathlib, pprint, json, pandas as pd, numpy as np, scipy as sci, sklearn
+
+####################################################################################################
+try   : verbosity = int(json.load(open(os.path.dirname(os.path.abspath(__file__)) + "/../../config.json", mode='r'))['verbosity'])
+except Exception as e : verbosity = 4
+#raise Exception(f"{e}")
+
+def log(*s):
+    print(*s, flush=True)
+
+def log2(*s):
+    if verbosity >= 2 : print(*s, flush=True)
+
+def log3(*s):
+    if verbosity >= 3 : print(*s, flush=True)
+
+def os_makedirs(dir_or_file):
+    if os.path.isfile(dir_or_file) :os.makedirs(os.path.dirname(os.path.abspath(dir_or_file)), exist_ok=True)
+    else : os.makedirs(os.path.abspath(dir_or_file), exist_ok=True)
+
+####################################################################################################
+global model, session
+def init(*kw, **kwargs):
+    global model, session
+    model = Model(*kw, **kwargs)
+    session = None
+
+def reset():
+    global model, session
+    model, session = None, None
+
+
+########Custom Model ################################################################################
+import wget
 from pathlib import Path
-try :
-    print("**************************************** Importing DataConfig ****************************************")
-    from pytorch_tabular import TabularModel
-    from pytorch_tabular.models import CategoryEmbeddingModelConfig, TabNetModelConfig, NodeConfig
-    from pytorch_tabular.config import DataConfig, OptimizerConfig, TrainerConfig, ExperimentConfig
-    print("**************************************** Imported DataConfig ****************************************")
-except :
-    print("**************************************** !! Couldn't import DataConfig !! ****************************************")
-
-    # os.system("pip install pytorch_tabular[all]")
-
-MODEL_LIST = "CategoryEmbeddingModelConfig,TabNetModelConfig,NodeConfig".split(",")
-
 # torch.manual_seed(0)
 # np.random.seed(0)
 # torch.set_deterministic(True)
 # from torch.utils import data
 from sklearn.model_selection import train_test_split
 import torch
+
+try :
+    from pytorch_tabular import TabularModel
+except :
+    print(" !! Couldn't import pytorch_tabular, pip install ****************************************")
+    cmd ="python -m pip install git+https://github.com/manujosephv/pytorch_tabular.git@82a30fe2ad1cc8c4f883d86d5f63925e67a0a015 "
+    # cmd = "pip install pytorch_tabular[all]"
+    os.system(cmd)
+
+from pytorch_tabular import TabularModel
+from pytorch_tabular.models import (CategoryEmbeddingModelConfig, TabNetModelConfig, NodeConfig,
+                                    CategoryEmbeddingMDNConfig, MixtureDensityHeadConfig,  AutoIntConfig )
+from pytorch_tabular.config import DataConfig, OptimizerConfig, TrainerConfig, ExperimentConfig
+
+
+MODEL_DICT = { 
+    "CategoryEmbeddingModelConfig":  CategoryEmbeddingModelConfig ,
+    "TabNetModelConfig" :            TabNetModelConfig ,
+    "NodeConfig" :                   NodeConfig,
+    "CategoryEmbeddingMDNConfig":    CategoryEmbeddingMDNConfig,
+    "AutoIntConfig" :                AutoIntConfig
+}
+
+
+
 ####################################################################################################
-VERBOSE = False
-
-def log(*s):
-    print(*s, flush=True)
-
-def log2(*s):
-    print(*s, flush=True)
-
-####################################################################################################
-global model, session
-
-def init(*kw, **kwargs):
-    global model, session
-    model = Model(*kw, **kwargs)
-    session = None
-
-
 class Model(object):
     def __init__(self, model_pars=None, data_pars=None, compute_pars=None):
         self.model_pars, self.compute_pars, self.data_pars = model_pars, compute_pars, data_pars
@@ -81,30 +106,34 @@ class Model(object):
 
         else:
             ###############################################################
-            dm          = data_pars['cols_model_group_custom']
+            dm          = data_pars['cols_model_type2']
             data_config = DataConfig(
               target           = dm['coly'], #target should always be a list. Multi-targets are only supported for regression. Multi-Task Classification is not implemented
-              continuous_cols  = dm['colnum'],
-              categorical_cols = dm['colcat'],
+              continuous_cols  = dm['colcontinuous'],
+              categorical_cols = dm['colsparse'],
             )
 
             class_name   = model_pars.get('model_class',  "CategoryEmbeddingModelConfig" ).split("::")[-1]
-            assert class_name in MODEL_LIST, "ModelConfig not available"
+            assert class_name in MODEL_DICT, "ModelConfig not available"
 
-            # Pick the needed ModelConfig
-            model_class = globals()[ class_name ]
+            # Pick the needed ModelConfig  ####################################
+            model_class = MODEL_DICT[class_name]
+            if class_name == "CategoryEmbeddingMDNConfig" :  ### Mixture Desnsity Model
+                ## Check https://github.com/manujosephv/pytorch_tabular/blob/main/tests/test_mdn.py#L99
+                self.model_pars['model_pars']['mdn_config'] = MixtureDensityHeadConfig(num_gaussian=  self.model_pars['model_pars']['num_gaussian'])
+                # remove these as they cause errors to other modelConfigs
+                del self.model_pars['model_pars']['num_gaussian']
 
-            #model_class = None
-            #if class_name == "CategoryEmbeddingModelConfig":
-            #    model_class = CategoryEmbeddingModelConfig
-            #elif class_name == "TabNetModelConfig":
-            #    model_class = TabNetModelConfig
-            #else:
-            #    model_class = NodeConfig
+            else:
+                for x in  [ 'num_gaussian', 'mdn_config' ] :
+                    try :
+                       del self.model_pars['model_pars'][x]
+                    except : pass   
+            
 
-            # model_class  = globals()[class_name]
             model_config = model_class( **model_pars['model_pars']   )
-
+            # Remove it since it's unused for other models and can cause errors
+            # del self.model_pars['model_pars']['mdn_config']
             trainer_config   = TrainerConfig( **compute_pars.get('compute_pars', {} )) # For testing quickly, max_epochs=1 )
             optimizer_config = OptimizerConfig(**compute_pars.get('optimizer_pars', {} ))
 
@@ -118,7 +147,7 @@ class Model(object):
             self.guide = None
             self.pred_summary = None  ### All MC summary
 
-            if VERBOSE: log(self.guide, self.model)
+            log(self.guide, self.model)
 
 
 def fit(data_pars=None, compute_pars=None, out_pars=None, **kw):
@@ -126,10 +155,10 @@ def fit(data_pars=None, compute_pars=None, out_pars=None, **kw):
     """
     global model, session
     session = None  # Session type for compute
+    cpars          = copy.deepcopy( compute_pars.get("compute_pars", {}))   ## issue with pickle
 
     # if data_pars is not None :
     Xtrain_tuple, ytrain, Xtest_tuple, ytest = get_dataset(data_pars, task_type="train")
-    cpars          = copy.deepcopy( compute_pars.get("compute_pars", {}))   ## issue with pickle
 
     train = pd.concat((Xtrain_tuple[0], Xtrain_tuple[1]), axis=1)
     train = pd.concat((train, ytrain), axis=1)
@@ -149,7 +178,7 @@ def predict(Xpred=None, data_pars: dict={}, compute_pars: dict={}, out_pars: dic
         Xpred_tuple = get_dataset(data_pars, task_type="predict")
     else :
         cols_type   = data_pars.get('cols_model_type2', {})  ##
-        Xpred_tuple = get_dataset_tuple(Xpred, cols_type, cols_ref_formodel)   
+        Xpred_tuple = get_dataset_tuple(Xpred, cols_type)
 
     Xpred_tuple_concat = pd.concat((Xpred_tuple[0], Xpred_tuple[1]), axis=1)
     ypred = model.model.predict(Xpred_tuple_concat)
@@ -160,11 +189,6 @@ def predict(Xpred=None, data_pars: dict={}, compute_pars: dict={}, out_pars: dic
          ypred_proba = model.model.predict_proba(Xpred)
     return ypred, ypred_proba
 
-
-
-def reset():
-    global model, session
-    model, session = None, None
 
 def save(path=None, info=None):
     """ Custom saving
@@ -211,49 +235,23 @@ def load_info(path=""):
     return dd
 
 
-def get_dataset2(data_pars=None, task_type="train", **kw):
-    """
-      "ram"  :
-      "file" :
-    """
-    # log(data_pars)
-    data_type = data_pars.get('type', 'ram')
-    if data_type == "ram":
-        if task_type == "predict":
-            d = data_pars[task_type]
-            return d["X"]
-
-        if task_type == "eval":
-            d = data_pars[task_type]
-            return d["X"], d["y"]
-
-        if task_type == "train":
-            d = data_pars[task_type]
-            return d["Xtrain"], d["ytrain"], d["Xtest"], d["ytest"]
-
-    elif data_type == "file":
-        raise Exception(f' {data_type} data_type Not implemented ')
-
-    raise Exception(f' Requires  Xtrain", "Xtest", "ytrain", "ytest" ')
-
-
-
 # cols_ref_formodel = ['cols_single_group']
 cols_ref_formodel = ['colcontinuous', 'colsparse']
-def get_dataset_tuple(Xtrain, cols_type_received, cols_ref):
-    """  Split into Tuples to feed  Xyuple = (df1, df2, df3) OR single dataframe
+def get_dataset_tuple(Xtrain, cols_type_received, cols_ref=None):
+    """  Split into Tuples:  Xtuple = (df1, df2, df3) OR single dataframe  to Feed model
     :param Xtrain:
     :param cols_type_received:
     :param cols_ref:
     :return:
     """
-    if len(cols_ref) <= 1 :
+    global cols_ref_formodel  ## Split INTO tuples for model feed
+    if len(cols_ref_formodel) <= 1 :
         return Xtrain
 
     Xtuple_train = []
     # cols_ref is the reference for types of cols groups (sparse/continuous)
-    # This will result in deviding the dataset into many groups of features
-    for cols_groupname in cols_ref :
+    # This will result in dividing the dataset into many groups of features
+    for cols_groupname in cols_ref_formodel :
         # Assert the group name is in the cols reference
         assert cols_groupname in cols_type_received, "Error missing colgroup in config data_pars[cols_model_type] "
         cols_i = cols_type_received[cols_groupname]
@@ -280,13 +278,13 @@ def get_dataset(data_pars=None, task_type="train", **kw):
         if task_type == "predict":
             d = data_pars[task_type]
             Xtrain       = d["X"]
-            Xtuple_train = get_dataset_tuple(Xtrain, cols_type_received, cols_ref)
+            Xtuple_train = get_dataset_tuple(Xtrain, cols_type_received)
             return Xtuple_train
 
         if task_type == "eval":
             d = data_pars[task_type]
             Xtrain, ytrain  = d["X"], d["y"]
-            Xtuple_train    = get_dataset_tuple(Xtrain, cols_type_received, cols_ref)
+            Xtuple_train    = get_dataset_tuple(Xtrain, cols_type_received)
             return Xtuple_train, ytrain
 
         if task_type == "train":
@@ -294,8 +292,8 @@ def get_dataset(data_pars=None, task_type="train", **kw):
             Xtrain, ytrain, Xtest, ytest  = d["Xtrain"], d["ytrain"], d["Xtest"], d["ytest"]
 
             ### dict  colgroup ---> list of df
-            Xtuple_train = get_dataset_tuple(Xtrain, cols_type_received, cols_ref)
-            Xtuple_test  = get_dataset_tuple(Xtest, cols_type_received, cols_ref)
+            Xtuple_train = get_dataset_tuple(Xtrain, cols_type_received)
+            Xtuple_test  = get_dataset_tuple(Xtest, cols_type_received)
             log2("Xtuple_train", Xtuple_train)
 
             return Xtuple_train, ytrain, Xtuple_test, ytest
@@ -309,39 +307,17 @@ def get_dataset(data_pars=None, task_type="train", **kw):
 
 ####################################################################################################
 ############ Test  #################################################################################
-
-
-def test(nrows=1000):
-    """
-        nrows : take first nrows from dataset
-    """
-
+def test_dataset_covtype(nrows=1000):
     # Dense features
-    colnum = ["Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology",
-        "Vertical_Distance_To_Hydrology", "Horizontal_Distance_To_Roadways",
-        "Hillshade_9am" , "Hillshade_Noon",  "Hillshade_3pm", "Horizontal_Distance_To_Fire_Points"]
+    colnum = ["Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology", "Horizontal_Distance_To_Roadways", "Hillshade_9am" , "Hillshade_Noon",  "Hillshade_3pm", "Horizontal_Distance_To_Fire_Points"]
 
     # Sparse features
-    colcat = ["Wilderness_Area1",  "Wilderness_Area2", "Wilderness_Area3",  
-        "Wilderness_Area4",  "Soil_Type1",  "Soil_Type2",  "Soil_Type3",
-        "Soil_Type4",  "Soil_Type5",  "Soil_Type6",  "Soil_Type7",  "Soil_Type8",  "Soil_Type9",
-        "Soil_Type10",  "Soil_Type11",  "Soil_Type12",  "Soil_Type13",  "Soil_Type14",
-        "Soil_Type15",  "Soil_Type16",  "Soil_Type17",  "Soil_Type18",  "Soil_Type19",
-        "Soil_Type20",  "Soil_Type21",  "Soil_Type22",  "Soil_Type23",  "Soil_Type24",
-        "Soil_Type25",  "Soil_Type26",  "Soil_Type27",  "Soil_Type28",  "Soil_Type29",
-        "Soil_Type30",  "Soil_Type31",  "Soil_Type32",  "Soil_Type33",  "Soil_Type34",
-        "Soil_Type35",  "Soil_Type36",  "Soil_Type37",  "Soil_Type38",  "Soil_Type39",
-        "Soil_Type40",  ]
+    colcat = ["Wilderness_Area1",  "Wilderness_Area2", "Wilderness_Area3", "Wilderness_Area4",  "Soil_Type1",  "Soil_Type2",  "Soil_Type3", "Soil_Type4",  "Soil_Type5",  "Soil_Type6",  "Soil_Type7",  "Soil_Type8",  "Soil_Type9", "Soil_Type10",  "Soil_Type11",  "Soil_Type12",  "Soil_Type13",  "Soil_Type14", "Soil_Type15",  "Soil_Type16",  "Soil_Type17",  "Soil_Type18",  "Soil_Type19", "Soil_Type20",  "Soil_Type21",  "Soil_Type22",  "Soil_Type23",  "Soil_Type24", "Soil_Type25",  "Soil_Type26",  "Soil_Type27",  "Soil_Type28",  "Soil_Type29", "Soil_Type30",  "Soil_Type31",  "Soil_Type32",  "Soil_Type33",  "Soil_Type34", "Soil_Type35",  "Soil_Type36",  "Soil_Type37",  "Soil_Type38",  "Soil_Type39", "Soil_Type40",  ]
     
     # Target column
     coly        = ["Covertype"]
 
-    log("start")
-    global model, session
-
     root = os.path.join(os.getcwd() ,"ztmp")
-
-
     BASE_DIR = Path.home().joinpath( root, 'data/input/covtype/')
     datafile = BASE_DIR.joinpath('covtype.data.gz')
     datafile.parent.mkdir(parents=True, exist_ok=True)
@@ -354,142 +330,333 @@ def test(nrows=1000):
     # Read nrows of only the given columns 
     feature_columns = colnum + colcat + coly
     df = pd.read_csv(datafile, header=None, names=feature_columns, nrows=nrows)
+    df[coly] = df[coly].astype('uint8')
+    return df, colnum, colcat, coly
 
+
+def train_test_split2(df, coly):
+    log3(df.dtypes)
+    X,y = df.drop(coly,  axis=1), df[coly]
+    log3('y', np.sum(y[y==1]) , X.head(3))
+    X_train_full, X_test, y_train_full, y_test = train_test_split(X, y, test_size=0.05, random_state=2021)
+    X_train, X_valid, y_train, y_valid         = train_test_split(X_train_full, y_train_full, random_state=2021)
+    num_classes                                = len(set(y_train_full.values.ravel()))
+    return X,y, X_train, X_valid, y_train, y_valid, X_test,  y_test, num_classes
+
+
+def test(n_sample = 100):
+    """
+        nrows : take first nrows from dataset
+    """
+    global model, session
+    df, colnum, colcat, coly = test_dataset_covtype()
+    X,y, X_train, X_valid, y_train, y_valid, X_test,  y_test, num_classes = train_test_split2(df, coly)
 
     #### Matching Big dict  ##################################################
-    X = df
-    y = df[coly].astype('uint8')
-    log('y', np.sum(y[y==1]) )
-
-    # Split the df into train/test subsets
-    X_train_full, X_test, y_train_full, y_test = train_test_split(X, y, test_size=0.05, random_state=2021, stratify=y)
-    X_train, X_valid, y_train, y_valid         = train_test_split(X_train_full, y_train_full, random_state=2021, stratify=y_train_full)
-    num_classes = len(set(y_train_full[coly].values.ravel()))
-    log(X_train)
-
-
     cols_input_type_1 = []
-    n_sample = 100
-    def post_process_fun(y):
-        return int(y)
+    def post_process_fun(y): return int(y)
+    def pre_process_fun(y):  return int(y)
 
-    def pre_process_fun(y):
-        return int(y)
-
-
-    m = {'model_pars': {
-        ### LightGBM API model   #######################################
+    m = {
+    'model_pars': {
         # Specify the ModelConfig for pytorch_tabular
         'model_class':  "torch_tabular.py::CategoryEmbeddingModelConfig"
-        
-        # Type of target prediction, evaluation metrics
-        ,'model_pars' : { 'task': "classification",
-                        'metrics' : ["f1","accuracy"],
-                        'metrics_params' : [{"num_classes":num_classes},{}]
-                        }  
+
+        ,'model_pars' : {
+                        # 'task': "classification",
+                        # 'metrics' : ["f1","accuracy"],
+                        # 'metrics_params' : [{"num_classes":num_classes},{}]
+                        }
 
         , 'post_process_fun' : post_process_fun   ### After prediction  ##########################################
         , 'pre_process_pars' : {'y_norm_fun' :  pre_process_fun ,  ### Before training  ##########################
-
-        ### Pipeline for data processing ##############################
-        'pipe_list': [  #### coly target prorcessing
-        {'uri': 'source/prepro.py::pd_coly',                 'pars': {}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         },
-
-        {'uri': 'source/prepro.py::pd_colnum_bin',           'pars': {}, 'cols_family': 'colnum',     'cols_out': 'colnum_bin',     'type': ''             },
-        {'uri': 'source/prepro.py::pd_colnum_binto_onehot',  'pars': {}, 'cols_family': 'colnum_bin', 'cols_out': 'colnum_onehot',  'type': ''             },
-
-        #### catcol INTO integer,   colcat into OneHot
-        {'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             },
-        {'uri': 'source/prepro.py::pd_colcat_to_onehot',     'pars': {}, 'cols_family': 'colcat_bin', 'cols_out': 'colcat_onehot',  'type': ''             },
-
+            ### Pipeline for data processing ##############################
+            'pipe_list': [  #### coly target prorcessing
+            {'uri': 'source/prepro.py::pd_coly',                 'pars': {}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         },
+            {'uri': 'source/prepro.py::pd_colnum_bin',           'pars': {}, 'cols_family': 'colnum',     'cols_out': 'colnum_bin',     'type': ''             },
+            #### catcol INTO integer,   colcat into OneHot
+            {'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             },
+            {'uri': 'source/prepro.py::pd_colcat_to_onehot',     'pars': {}, 'cols_family': 'colcat_bin', 'cols_out': 'colcat_onehot',  'type': ''             },
         ],
             }
-        },
+    },
 
-    'compute_pars': { 'metric_list': ['accuracy_score','average_precision_score']
-                    },
+    'compute_pars': { 'metric_list': ['accuracy_score','average_precision_score'],
+                # batch_size (int): Number of samples in each batch of training
+                # fast_dev_run (bool): Quick Debug Run of Val
+                # max_epochs (int): Maximum number of epochs to be run
+                # min_epochs (int): Minimum number of epochs to be run
+                # gpus (int): The index of the GPU to be used. If `None`, will use CPU
+                # accumulate_grad_batches (int): Accumulates grads every k batches or as set up in the dict.
+                #     Trainer also calls optimizer.step() for the last indivisible step number.
+                # auto_lr_find (bool): Runs a learning rate finder algorithm (see this paper) when calling trainer.tune(),
+                #     to find optimal initial learning rate.
+                # check_val_every_n_epoch (int): Check val every n train epochs.
+                # gradient_clip_val (float): Gradient clipping value
+                # overfit_batches (float): Uses this much data of the training set. If nonzero, will use the same training set
+                #     for validation and testing. If the training dataloaders have shuffle=True, Lightning will automatically disable it.
+                #     Useful for quickly debugging or trying to overfit on purpose.
+                # profiler (Union[str, NoneType]): To profile individual steps during training and assist in identifying bottlenecks.
+                #     Choices are: 'None' 'simple' 'advanced'
+                # early_stopping (str): The loss/metric that needed to be monitored for early stopping. If None, there will be no early stopping
+                # early_stopping_min_delta (float): The minimum delta in the loss/metric which qualifies as an improvement in early stopping
+                # early_stopping_mode (str): The direction in which the loss/metric should be optimized. Choices are `max` and `min`
+                # early_stopping_patience (int): The number of epochs to wait until there is no further improvements in loss/metric
+                # checkpoints (str): The loss/metric that needed to be monitored for checkpoints. If None, there will be no checkpoints
+                # checkpoints_path (str): The path where the saved models will be
+                # checkpoints_name(Optional[str]): The name under which the models will be saved.
+                #     If left blank, first it will look for `run_name` in experiment_config and if that is also None
+                #     then it will use a generic name like task_version.
+                # checkpoints_mode (str): The direction in which the loss/metric should be optimized
+                # checkpoints_save_top_k (int): The number of best models to save
+                # load_best (bool): Flag to load the best model saved during training
+                # track_grad_norm (int): Track and Log Gradient Norms in the logger.
+                #     -1 by default means no tracking. 1 for the L1 norm, 2 for L2 norm, etc.
+                #
+                'compute_pars' : {   'max_epochs' : 1, 'min_epochs': 1
+
+                }
+    },
 
     'data_pars': { 'n_sample' : n_sample,
-
-        'download_pars' : None,
-
+        'download_pars'   : None,
         'cols_input_type' : cols_input_type_1,
+
         ### family of columns for MODEL  #########################################################
-        'cols_model_group': [ 'colnum_bin',
-                                'colcat_bin',
-                            ]
+        'cols_model_group'  : [ 'colnum_bin',   'colcat_bin' ],
 
-        ,'cols_model_group_custom' :  { 'colnum' : colnum,
-                                        'colcat' : colcat,
-                                        'coly' : coly
-                            }
-        ###################################################  
-        ,'train': {'Xtrain': X_train,
-                    'ytrain': y_train,
-                        'Xtest': X_valid,
-                        'ytest': y_valid},
-                'eval': {'X': X_valid,
-                        'y': y_valid},
-                'predict': {'X': X_valid}
-
+        ### Added continuous & sparse features groups  == cols_ref_formodel = ['colcontinuous', 'colsparse']
+        'cols_model_type2': {
+            'colcontinuous':  colnum ,
+            'colsparse'    : colcat,
+            'coly'         : coly
+        },
         ### Filter data rows   ##################################################################
-        ,'filter_pars': { 'ymax' : 2 ,'ymin' : -1 },
+        'filter_pars': { 'ymax' : 2 ,'ymin' : -1 },
 
-        
+
+        ###################################################
+        'train':   {'Xtrain': X_train, 'ytrain': y_train,  'Xtest': X_valid,  'ytest':  y_valid},
+        'eval':    {'X': X_valid,  'y': y_valid},
+        'predict': {}
+
+    }
+    }
+
+    ##### Running loop
+    """https://github.com/manujosephv/pytorch_tabular/blob/main/tests/test_mdn.py
+    
+    Neural Oblivious Decision Ensembles for Deep Learning on 
+    Tabular Data is a model presented in ICLR 2020 and 
+    according to the authors have beaten well-tuned Gradient Boosting models on many datasets.
+
+    TabNet: Attentive Interpretable Tabular Learning is another model coming out 
+    of Google Research which uses Sparse Attention in multiple steps 
+    of decision making to model the output.
+
+    Mixed Density Network
+
+    """
+    ll = [
+        ('torch_tabular.py::CategoryEmbeddingModelConfig',
+            {   'task': "classification",
+                'metrics' : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        ),
+        ('torch_tabular.py::TabNetModelConfig',
+           {   'task': "classification",
+                'metrics' : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        ),
+        ('torch_tabular.py::NodeConfig',
+           {   'task': "classification",
+                'metrics' : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        ),
+        ('torch_tabular.py::CategoryEmbeddingMDNConfig',
+            {   'task'       : "regression",
+            'mdn_config'     : 'MixtureDensityHeadConfig',
+            'num_gaussian'   : 2,
+            'metrics'        : ["mean_absolute_error"],
+            'metrics_params' : [{}],
+            }
+
+        ),
+
+        ("torch_tabular.py::AutoIntConfig",
+            {
+                'task'           : 'classification',
+                'mdn_config'     : None,
+                'metrics'        : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        )
+    ]
+    for cfg in ll:
+        log("******************************************** New Model ********************************************")
+        log(f"******************************************** {cfg[0]} ********************************************")
+        # Set the ModelConfig
+        m['model_pars']['model_class'] = cfg[0]
+        m['model_pars']['model_pars']  = {**m['model_pars']['model_pars'] , **cfg[1] }
+        test_helper(m, X_valid)
+
+
+
+
+def test3(n_sample = 100):
+    """
+        nrows : take first nrows from dataset
+    """
+    global model, session
+    df, colnum, colcat, coly = test_dataset_covtype()
+    X,y, X_train, X_valid, y_train, y_valid, X_test,  y_test, num_classes = train_test_split2(df, coly)
+
+    #### Matching Big dict  ##################################################
+    cols_input_type_1 = []
+    def post_process_fun(y): return int(y)
+    def pre_process_fun(y):  return int(y)
+
+    m = {
+    'model_pars': {
+        # Specify the ModelConfig for pytorch_tabular
+        'model_class':  "torch_tabular.py::CategoryEmbeddingModelConfig"
+
+        ,'model_pars' : {
+                        # 'task': "classification",
+                        # 'metrics' : ["f1","accuracy"],
+                        # 'metrics_params' : [{"num_classes":num_classes},{}]
+                        }
+
+        , 'post_process_fun' : post_process_fun   ### After prediction  ##########################################
+        , 'pre_process_pars' : {'y_norm_fun' :  pre_process_fun ,  ### Before training  ##########################
+            ### Pipeline for data processing ##############################
+            'pipe_list': [  #### coly target prorcessing
+            {'uri': 'source/prepro.py::pd_coly',                 'pars': {}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         },
+            {'uri': 'source/prepro.py::pd_colnum_bin',           'pars': {}, 'cols_family': 'colnum',     'cols_out': 'colnum_bin',     'type': ''             },
+            #### catcol INTO integer,   colcat into OneHot
+            {'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             },
+            {'uri': 'source/prepro.py::pd_colcat_to_onehot',     'pars': {}, 'cols_family': 'colcat_bin', 'cols_out': 'colcat_onehot',  'type': ''             },
+        ],
+            }
+    },
+
+    'compute_pars': { 'metric_list': ['accuracy_score','average_precision_score'],
+                'compute_pars' : {   'max_epochs' : 10, 'min_epochs': 100
+
+                }
+    },
+
+    'data_pars': { 'n_sample' : n_sample,
+        'download_pars'   : None,
+        'cols_input_type' : cols_input_type_1,
+
+        ### family of columns for MODEL  #########################################################
+        'cols_model_group'  : [ 'colnum_bin',   'colcat_bin' ],
+
         ### Added continuous & sparse features groups ###
         'cols_model_type2': {
-            'colcontinuous':   colnum ,
-            'colsparse' : colcat, 
+            'colcontinuous':  colnum ,
+            'colsparse'    : colcat,
+            'coly'         : coly
         },
-        }
+        ### Filter data rows   ##################################################################
+        'filter_pars': { 'ymax' : 2 ,'ymin' : -1 },
+
+
+        ###################################################
+        'train':   {'Xtrain': X_train, 'ytrain': y_train,  'Xtest': X_valid,  'ytest':  y_valid},
+        'eval':    {'X': X_valid,  'y': y_valid},
+        'predict': {}
+
+    }
     }
 
     ##### Running loop
     ll = [
-        'torch_tabular.py::CategoryEmbeddingModelConfig',
-        'torch_tabular.py::TabNetModelConfig', 
-        'torch_tabular.py::NodeConfig'
+        ('torch_tabular.py::CategoryEmbeddingModelConfig',
+            {   'task': "classification",
+                'metrics' : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        ),
+        ('torch_tabular.py::TabNetModelConfig',
+           {   'task': "classification",
+                'metrics' : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        ),
+        ('torch_tabular.py::NodeConfig',
+           {   'task': "classification",
+                'metrics' : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        ),
+        ('torch_tabular.py::CategoryEmbeddingMDNConfig',
+            {   'task'       : "regression",
+            'mdn_config'     : 'MixtureDensityHeadConfig',
+            'num_gaussian'   : 2,
+            'metrics'        : ["mean_absolute_error"],
+            'metrics_params' : [{}],
+            }
+
+        ),
+
+        ("torch_tabular.py::AutoIntConfig",
+            {
+                'task'           : 'classification',
+                'mdn_config'     : None,
+                'metrics'        : ["f1","accuracy"],
+                'metrics_params' : [{"num_classes":num_classes},{}]
+            }
+        )
     ]
     for cfg in ll:
-
+        log("******************************************** New Model ********************************************")
+        log(f"******************************************** {cfg[0]} ********************************************")
         # Set the ModelConfig
-        m['model_pars']['model_class'] = cfg
-
-        log('Setup model..')
-        model = Model(model_pars=m['model_pars'], data_pars=m['data_pars'], compute_pars= m['compute_pars'] )
-
-        log('\n\nTraining the model..')
-        fit(data_pars=m['data_pars'], compute_pars= m['compute_pars'], out_pars=None)
-        log('Training completed!\n\n')
-
-        log('Predict data..')
-        ypred, ypred_proba = predict(Xpred=None, data_pars=m['data_pars'], compute_pars=m['compute_pars'])
-        log(f'Top 5 y_pred: {np.squeeze(ypred)[:5]}')
-
-        if cfg != "torch_tabular.py::NodeConfig":
-            log('Saving model..')
-            save(path= "ztmp/data/output/torch_tabular")
-            #  os.path.join(root, 'data\\output\\torch_tabular\\model'))
-
-            log('Load model..')
-            model, session = load_model(path="ztmp/data/output/torch_tabular")
-            #os.path.join(root, 'data\\output\\torch_tabular\\model'))
-        else:
-            log('\n*** !!! Saving Bug in pytorch_tabular for NodeConfig !!! ***\n')
-            
-        log('Model architecture:')
-        log(model.model)
-
-        log('Model config:')
-        log(model.model.config._config_name)
-        reset()
+        m['model_pars']['model_class'] = cfg[0]
+        m['model_pars']['model_pars']  = {**m['model_pars']['model_pars'] , **cfg[1] }
+        test_helper(m, X_valid)
 
 
-def test3():
-    pass
+def test_helper(m, X_valid):
+    global model, session
+    reset()
+    log('Setup model..')
+    model = Model(model_pars=m['model_pars'], data_pars=m['data_pars'], compute_pars= m['compute_pars'] )
+
+    log('\n\nTraining the model..')
+    fit(data_pars=m['data_pars'], compute_pars= m['compute_pars'], out_pars=None)
+    log('Training completed!\n\n')
+
+    log('Predict data..')
+    ypred, ypred_proba = predict(Xpred=X_valid, data_pars=m['data_pars'], compute_pars=m['compute_pars'])
+    log(f'Top 5 y_pred: {np.squeeze(ypred)[:5]}')
+
+    if m['model_pars']['model_class'] != "torch_tabular.py::NodeConfig":
+        log('Saving model..')
+        save(path= "ztmp/data/output/torch_tabular")
+        #  os.path.join(root, 'data\\output\\torch_tabular\\model'))
+
+        log('Load model..')
+        model, session = load_model(path="ztmp/data/output/torch_tabular")
+        #os.path.join(root, 'data\\output\\torch_tabular\\model'))
+    else:
+        log('\n*** !!! Saving Bug in pytorch_tabular for NodeConfig !!! ***\n')
+
+    log('Model architecture:')
+    log(model.model)
+
+    log('Model config:')
+    log(model.model.config._config_name)
+    reset()
 
 
-def test2(nrow=10000):
+
+def test2(nrows=10000):
     """
        python source/models/torch_tabular.py test
 
@@ -498,7 +665,6 @@ def test2(nrow=10000):
 
     #X = np.random.rand(10000,20)
     #y = np.random.binomial(n=1, p=0.5, size=[10000])
-
     BASE_DIR = Path.home().joinpath('data/input/covtype/')
     datafile = BASE_DIR.joinpath('covtype.data.gz')
     datafile.parent.mkdir(parents=True, exist_ok=True)
@@ -507,10 +673,8 @@ def test2(nrow=10000):
         wget.download(url, datafile.as_posix())
 
     target_name = ["Covertype"]
-
     colcat = [ "Wilderness_Area1", "Wilderness_Area2", "Wilderness_Area3", "Wilderness_Area4", "Soil_Type1", "Soil_Type2", "Soil_Type3", "Soil_Type4", "Soil_Type5", "Soil_Type6", "Soil_Type7", "Soil_Type8", "Soil_Type9", "Soil_Type10", "Soil_Type11", "Soil_Type12", "Soil_Type13", "Soil_Type14", "Soil_Type15", "Soil_Type16", "Soil_Type17", "Soil_Type18", "Soil_Type19", "Soil_Type20", "Soil_Type21", "Soil_Type22", "Soil_Type23", "Soil_Type24", "Soil_Type25", "Soil_Type26", "Soil_Type27", "Soil_Type28", "Soil_Type29", "Soil_Type30", "Soil_Type31", "Soil_Type32", "Soil_Type33", "Soil_Type34", "Soil_Type35", "Soil_Type36", "Soil_Type37", "Soil_Type38", "Soil_Type39", "Soil_Type40"
                       ]
-
     colnum = [ "Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology", "Horizontal_Distance_To_Roadways", "Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm", "Horizontal_Distance_To_Fire_Points"
     ]
 
@@ -572,4 +736,39 @@ if __name__ == "__main__":
     fire.Fire()
     # test()
 
+
+
+
+
+
+
+
+
+
+
+
+def get_dataset2(data_pars=None, task_type="train", **kw):
+    """
+      "ram"  :
+      "file" :
+    """
+    # log(data_pars)
+    data_type = data_pars.get('type', 'ram')
+    if data_type == "ram":
+        if task_type == "predict":
+            d = data_pars[task_type]
+            return d["X"]
+
+        if task_type == "eval":
+            d = data_pars[task_type]
+            return d["X"], d["y"]
+
+        if task_type == "train":
+            d = data_pars[task_type]
+            return d["Xtrain"], d["ytrain"], d["Xtest"], d["ytest"]
+
+    elif data_type == "file":
+        raise Exception(f' {data_type} data_type Not implemented ')
+
+    raise Exception(f' Requires  Xtrain", "Xtest", "ytrain", "ytest" ')
 

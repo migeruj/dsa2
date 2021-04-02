@@ -9,8 +9,8 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 import json
 
-import utils
-from model_utils import get_pi_exact_vec, rnn_vae_forward_one_stage, rnn_vae_forward_two_stage
+from core_models import utils
+from core_models.model_utils import get_pi_exact_vec, rnn_vae_forward_one_stage, rnn_vae_forward_two_stage
 
 
 def training_phase(model, optimizer, train_loader, args, epoch):

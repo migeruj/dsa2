@@ -7,9 +7,28 @@
   ipython tseries.py  train      --config  config1  --pdb
 
 """
-import warnings
+import warnings, sys, gc, os, sys, json, copy, pandas as pd
 warnings.filterwarnings('ignore')
-import sys, gc, os, sys, json, copy, pandas as pd
+
+####################################################################################################
+try   : verbosity = int(json.load(open(os.path.dirname(os.path.abspath(__file__)) + "/../config.json", mode='r'))['verbosity'])
+except Exception as e : verbosity = 4
+#raise Exception(f"{e}")
+
+def log(*s):
+    print(*s, flush=True)
+
+def log2(*s):
+    if verbosity >= 2 : print(*s, flush=True)
+
+def log3(*s):
+    if verbosity >= 3 : print(*s, flush=True)
+
+def os_makedirs(dir_or_file):
+    if os.path.isfile(dir_or_file) :os.makedirs(os.path.dirname(os.path.abspath(dir_or_file)), exist_ok=True)
+    else : os.makedirs(os.path.abspath(dir_or_file), exist_ok=True)
+
+
 
 ####################################################################################################
 #### Add path for python import
@@ -20,33 +39,17 @@ sys.path.append( os.path.dirname(os.path.abspath(__file__)) + "/")
 root = os.path.abspath(os.getcwd()).replace("\\", "/") + "/"
 # print(root)
 
-#### Debuging state (Ture/False)
-DEBUG_=True
 
 ####################################################################################################
-####################################################################################################
-def log(*s, n=0, m=1):
-    sspace = "#" * n
-    sjump = "\n" * m
-    ### Implement pseudo Logging
-    print(sjump, sspace, s, sspace, flush=True)
-
-def logs(*s):
-    if DEBUG_:
-        print(*s, flush=True)
-
-
 def log_pd(df, *s, n=0, m=1):
     sjump = "\n" * m
     ### Implement pseudo Logging
     print(sjump,  df.head(n), flush=True)
 
 
+####################################################################################################
 from util_feature import  save, load_function_uri, load_dataset
 
-
-####################################################################################################
-####################################################################################################
 def save_features(df, name, path=None):
     """ Save dataframe on disk
     :param df:
@@ -157,7 +160,7 @@ def preprocess(path_train_X="", path_train_y="", path_pipeline_export="", cols_g
         pars['path_features_store']  = path_features_store
         pars['path_pipeline_export'] = path_pipeline_export
         df, col_pars                 = pipe_fun(df, cols_group['coly'], pars=pars)   ### coly can remove rows
-        logs("----------dfy----------\n", df)
+        log3("----------dfy----------\n", df)
 
     ### save dfy  #####################################################
     dfi_all['coly']              = df[cols_group['coly'] ]
@@ -193,6 +196,10 @@ def preprocess(path_train_X="", path_train_y="", path_pipeline_export="", cols_g
        df_        = df[ cols_list]        if cols_name in cols_group else dfi_all[cols_name]
 
        dfi, col_pars = pipe_fun(df_, cols_list, pars= pars)
+
+
+       log3("dfi input", df_.columns, df_.shape, cols_name)
+       log3("dfi new",   dfi.columns, dfi.shape, col_pars)
 
        ## Check Index are matching for Later JOIN: Issues with Sampler, re-index !!!!!!
        if 'sampler' not in pipe_i['uri'] :
@@ -291,7 +298,7 @@ def preprocess_inference(df, path_pipeline="data/pipeline/pipe_01/", preprocess_
 
        cols_list  = cols_group[cols_name]       if cols_name in cols_group else  cols_family_full[cols_name]
        df_        = df[ cols_group[cols_name]]  if cols_name in cols_group else  dfi_all[cols_name]
-       logs(df_, cols_list)
+       log3(df_, cols_list)
 
        if col_type == 'cross':
            pars['dfnum_hot']       = dfi_all['colnum_onehot']  ### dfnum_hot --> dfcross
@@ -302,6 +309,8 @@ def preprocess_inference(df, path_pipeline="data/pipeline/pipe_01/", preprocess_
        dfi, col_pars             = pipe_fun(df_, cols_list, pars= pars)
 
        ## Check Index are matching for Later JOIN: Issues with Sampler, re-index !!!!!!
+       log3("dfi input", df_.columns, df_.shape, cols_name)
+       log3("dfi new",   dfi.columns, dfi.shape, col_pars)       
        if 'sampler' not in pipe_i['uri'] :
           dfi.index = df_.index
 

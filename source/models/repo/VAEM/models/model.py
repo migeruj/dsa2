@@ -131,7 +131,8 @@ class partial_vaem(object):
                 self.auto_std = tf.minimum(self.auto_std,0.2)
                 self.z = tf.concat([self.z_local,self.z_global],1)
                 self.decoded_x_from_local, _ = self._decode._vaem_decoder(self.z_local, self.x, self.mask) # x generated from z_local ($\mathcal{z}$ in the paper)
-            
+
+                print(f'Decoded X: {self.decoded_x_from_local}')
             
                 # dependency VAE decoder
                 self.auto_std_z_local = tf.get_variable("auto_std_global",shape=[1, self._obs_dim-1],initializer=tf.zeros_initializer())+0.01
@@ -293,12 +294,14 @@ class partial_vaem(object):
                         encoder_variables.append(v)
 
                 self._sesh = tf.Session()
+                self._encoderSesh = tf.Session()
                 load_encoder = tf.contrib.framework.assign_from_checkpoint_fn(self._encoder_path, encoder_variables)
                 load_encoder(self._sesh)
+                load_encoder(self._encoderSesh)
                 load_generator = tf.contrib.framework.assign_from_checkpoint_fn(self._decoder_path, generator_variables)
                 load_generator(self._sesh)
                 uninitialized_vars = []
-                
+                print(f'Load Encoder : {load_encoder}')
                 for var in tf.all_variables():
                     try:
                         self._sesh.run(var)
@@ -641,6 +644,10 @@ class partial_vaem(object):
         im = self._sesh.run(self.decoded,feed_dict={self.x: x, self.mask: mask,self.x_induce:self._x_train})
         return im
 
+    def generateEncodings(self,x,mask):
+        enc = self._encoderSesh.run(self.encoded_local,feed_dict={self.x:x,self.mask:mask,self.x_induce:self._x_train})
+        return enc
+
     ### calculate the first term of information reward approximation
     def chaini_I(self, x, mask, i,cat_dims, dic_var_type,):
         '''
@@ -730,9 +737,9 @@ class partial_vaem(object):
                 name = prefix + re.sub("is/generator", "", v.name)
                 name = re.sub(":0", "", name)
                 var_dict[name] = v
-        for k, v in var_dict.items():
+        '''for k, v in var_dict.items():
             print(k)
-            print(v)
+            print(v)'''
         saver = tf.train.Saver(var_dict)
         saver.save(self._sesh, path)
 
@@ -747,16 +754,14 @@ class partial_vaem(object):
                 name = re.sub("is/encoder", "", v.name)
                 name = re.sub(":0", "", name)
                 var_dict[name] = v
-        for k, v in var_dict.items():
+        '''for k, v in var_dict.items():
             print(k)
-            print(v)
+            print(v)'''
         saver = tf.train.Saver(var_dict)
         saver.save(self._sesh, path)
         
         
-        
-    
-    
+   
     
 
 

@@ -1,12 +1,10 @@
-name: test_example
+name: test_benchmark
 
 ###  https://github.com/arita37/awesome-actions#static-analysis
 
 on:
   push:
     branches:
-      - main
-      - multi
       - benchmark
 
 

@@ -1,0 +1,141 @@
+name: test_runsampler
+###  https://github.com/arita37/awesome-actions#static-analysis
+
+on:
+  push:
+    branches:
+      - main
+      - multi
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.6.*
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.6.*
+      
+    - name: Install pipenv
+      uses: dschep/install-pipenv-action@v1
+      
+    ##### Log Start  ######################################################
+    #- name: ssh_gen
+    #  uses: webfactory/ssh-agent@v0.2.0
+      #with:
+      #  ssh-private-key: ${{ secrets.GIT_RSA }}
+                
+    - name: log_start
+      run: |
+           ls .
+           # cd /home/runner/work/mlmodels/  && git clone git@github.com:arita37/mlmodels_store.git  &&  ls && pwd
+           # cd /home/runner/work/mlmodels/mlmodels/
+
+    ########################################################################
+    # - name: log_start
+    #  run: |
+    #       cd /home/runner/work/mlmodels/  && git clone git@github.com:arita37/mlmodels_store.git  &&  ls && pwd
+    #       cd /home/runner/work/mlmodels/mlmodels/
+            
+
+    #- uses: actions/cache@v1
+    #  id: cache
+    #  with:
+    #    path: ~/.cache/pip
+    #    key: ${{ runner.os }}-pip-${{ hashFiles('**/install/requirements.txt') }}
+    #    restore-keys: |
+    #      ${{ runner.os }}-pip-
+   
+    - name: Cache pipenv virtualenv
+      id: cache-pipenv
+      uses: actions/cache@v1
+      with:
+        path: /opt/hostedtoolcache/Python/
+        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/install/py36.txt') }}
+          
+
+    - name: Install numpy
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run: pip install numpy==1.18.2   pillow==6.2.1  scipy
+      
+
+    - name: Install repo requirements  1
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run: |
+           pip install -r   install/py36.txt
+           pip install pyod==0.8.5
+
+    - name: Install repo requirements   2
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run:  |
+        ls .
+        #pip install -r install/requirements_fake.txt
+
+    #- name: Install repo
+    #  run: pip install -e . -r install/py36.txt  --no-deps
+
+    # - name: log_start
+    #  run: ml_test --do log_remote_start
+
+
+    - name: test_import
+      run: |
+           python -c "import os, numpy ; print(os)"
+           conda list
+           pip list
+           # python -c "import tensorflow, torch ; print(tensorflow); print(torch)"
+
+
+    #############################################################################################
+    ########  Test running  with epochs= 50  ####################################################
+    #- name: run_models
+    #  run: chmod -R 777 . && ztest/run_models.sh   # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_import/log_optim.py
+
+    - name: cd source - models && python model_sampler.py  test
+      #continue-on-error: true
+      run:  |
+            cd source/models && python model_sampler.py  test
+            echo "model_sampler.py" >> file_check.txt
+
+
+    - name: python source/run_sampler.py 
+      #continue-on-error: true
+      run:  |
+            python source-run_sampler.py  
+            echo "source/run_sampler.py" >> file_check.txt
+
+
+    - name: python tsampler.py  train_sampler
+      #continue-on-error: true
+      run:  |
+            python tsampler.py  train_sampler        --config  config_sampler
+            python tsampler.py  transform_sampler    --config  config_sampler
+            echo "tsampler.py" >> file_check.txt
+
+
+
+
+
+
+
+
+    #- name: ml_test_function
+    #  run: ml_test --do test_functions    2>&1 | tee  cd /home/runner/work/mlmodels/mlmodels_store/log_import/log_functions.py
+
+
+    #- name: ml_test
+    #  run: ml_test
+
+
+
+    #- name: log_gitcommit
+    #  run: |
+    #       ml_test --do log_remote_push --name test_fast_linux
+
+# https://ianwhitestone.work/AWS-Serverless-Deployments-With-Github-Actions/
+#
+#
+#
+#

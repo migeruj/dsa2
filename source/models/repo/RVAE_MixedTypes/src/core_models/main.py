@@ -12,9 +12,9 @@ import numpy as np
 import torch
 from torch import optim
 
-import utils
-import parser_arguments
-from train_eval_models import training_phase, evaluation_phase, repair_phase
+from core_models import utils
+from core_models import parser_arguments
+from core_models.train_eval_models import training_phase, evaluation_phase, repair_phase
 
 
 def compute_metrics(model, X, dataset_obj, args, epoch, losses_save,

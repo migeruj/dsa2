@@ -109,11 +109,84 @@ jobs:
 
       
     ########  Test running 
-    - name: run_all
-      run: chmod -R 777 . && ztest/run_full.sh   # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_import/log_optim.py
+    #- name: run_all
+    #  run: chmod -R 777 . && ztest/run_full.sh   # 2>&1 | tee   /home/runner/work/mlmodels/mlmodels_store/log_import/log_optim.py
+
+    - name: python  example/test_hyperopt.py  hyperparam  --ntrials 1  
+      # continue-on-error: true
+      run:  |
+            python  example/test_hyperopt.py  hyperparam  --ntrials 1 
+
+
+    - name: python example/test_mkeras.py  train    --config config1  
+      # continue-on-error: true
+      run:  |
+            python example/test_mkeras.py  train    --config config1
+            python example/test_mkeras.py  predict    --config config1 
+
+
+    - name: python   example/test_automl.py  train   
+      # continue-on-error: true
+      run:  |
+            python   example/test_automl.py  train       --nsample 200
+            python   example/test_automl.py  predict     --nsample 200 
+
+
+    - name: python example/regress/regress_salary.py
+      continue-on-error: true
+      run:  |
+            python example/regress/regress_salary.py  train   --nsample 1000    
+            python example/regress/regress_salary.py  predict  --nsample 1000 
+            python example/regress/regress_cardif.py  train   --nsample 1000
+
+
+    - name: python example/regress/regress_airbnb.py   
+      continue-on-error: true
+      run:  |
+            python example/regress/regress_airbnb.py  train   --nsample 20000  
+            python example/regress/regress_airbnb.py  predict  --nsample 5000
+
+
+    - name: python tseries.py  train      --config  config1 
+      continue-on-error: true
+      run:  |
+            python tseries.py  train      --config  config1
+
+
+    - name: python example/classifier/classifier_income.py 
+      continue-on-error: true
+      run:  |
+            python example/classifier/classifier_income.py  train    --nsample 1000
+            python example/classifier/classifier_income.py  predict  --nsample 1000
 
 
 
+
+# python example/regress/regress_salary.py  train   --nsample 1000
+# python example/regress/regress_salary.py  predict  --nsample 1000
+
+# python example/regress/regress_cardif.py  train   --nsample 1000
+
+
+# python example/regress/regress_airbnb.py  train   --nsample 20000
+# python example/regress/regress_airbnb.py  predict  --nsample 5000
+
+
+
+# python example/classifier/classifier_income.py  train    --nsample 1000   ;
+# python example/classifier/classifier_income.py  predict  --nsample 1000   ;
+
+
+### HyperOpt optuna testing
+# python  example/test_hyperopt.py  hyperparam  --ntrials 1
+
+### Keras model test
+# python example/test_mkeras.py  train    --config config1
+
+
+### Time Series Prediction
+# python tseries.py  train      --config  config1
+         
 
     #- name: ml_test_function
     #  run: ml_test --do test_functions    2>&1 | tee  cd /home/runner/work/mlmodels/mlmodels_store/log_import/log_functions.py

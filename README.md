@@ -9,8 +9,12 @@ Main
 
 
 Multi
-  ![test_fast_linux](https://github.com/arita37/dsa2/workflows/test_fast_linux/badge.svg?branch=multi)
+   ![test_fast_linux](https://github.com/arita37/dsa2/workflows/test_fast_linux/badge.svg?branch=multi)
+   
    ![test_full](https://github.com/arita37/dsa2/workflows/test_full/badge.svg?branch=multi)
+
+   ![test_models(https://github.com/arita37/dsa2/workflows/test_models/badge.svg?branch=multi)
+
 
 
 Preprocessors Check

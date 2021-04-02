@@ -4,6 +4,9 @@ import numpy as np
 import os, errno
 from dataset_prep_utils import dirtify_and_save_mixed_simple, dirtify_and_save_categorical
 
+# To consume named args from command line
+import argparse
+
 ##### STEPS
 # 1 - Select dataset
 # 2 - Select corruption process
@@ -11,20 +14,28 @@ from dataset_prep_utils import dirtify_and_save_mixed_simple, dirtify_and_save_c
 # 4 - Create corrupted datasets
 ############
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--input-path', required=True, help='path of your raw data set, csv/tsv')
+args = parser.parse_args()
+dataset_path = args.input_path
+
+
 # 1 - Select dataset
-dataset = 'Wine' # 'Letter'
+dataset = 'Adult' # 'Letter'
 
 if dataset is 'Adult':
 
     #### Noise Adult Dataset as Mixed Data
-    name_file = "adult.csv"
-    folder_path = "../../data_simple/adult/"
+    name_file = "adult.tsv"
+    # folder_path = "../../data_simple/Adult/"
+    folder_path = dataset_path
 
-    df_data = pd.read_csv(folder_path + name_file)
-
+    df_data = pd.read_csv(folder_path + name_file, sep="\t")
+    print(df_data.head(1))
     # numerical features
     num_feat_names = ['age',
                       'fnlwgt',
+                      'education-num',
                       'hours-per-week',
                       'capital-gain',
                       'capital-loss']
@@ -34,16 +45,20 @@ if dataset is 'Adult':
     int_cast_array = np.array([1,1,1,1,1,1], dtype=bool)
 
     # categorical features
-    cat_feat_names = ['bracket-salary',
+    cat_feat_names = [
+        # 'bracket-salary',
                       'native-country',
                       'sex',
                       'race',
                       'relationship',
                       'occupation',
                       'marital-status',
-                      'education-num',
                       'education',
-                      'workclass']
+                      'workclass',
+                      'target'
+                      ]
+    print(df_data.columns)
+    
 
 elif dataset is 'Wine':
 

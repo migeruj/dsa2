@@ -26,6 +26,7 @@ def global_pars_update(model_dict,  data_name, config_name):
     m                      = {}
     m["config_path"]       = THIS_FILEPATH  
     m["config_name"]       = config_name
+    m["model_file"]        = "model_sampler"
 
     #### peoprocess input path
     m["path_data_preprocess"] = dir_data + f"/input/{data_name}/train/"
@@ -60,7 +61,7 @@ def global_pars_update(model_dict,  data_name, config_name):
 
 ####################################################################################
 ##### Params########################################################################
-config_default   = "config1"    ### name of function which contains data configuration
+config_default   = "config_sampler"    ### name of function which contains data configuration
 
 
 cols_input_type_1 = {
@@ -90,59 +91,52 @@ def config_sampler() :
     def pre_process_fun(y):    ### Before the prediction is done
         return  int(y)
 
-
-    model_dict = {"model_pars": {
-        ### LightGBM API model   #######################################
+    model_dict = {
+      "model_pars": {
          "model_class": model_class
-        ,"model_pars" : {
-                        }
-
+        ,"model_pars" : { }
         , "post_process_fun" : post_process_fun   ### After prediction  ##########################################
-        , "pre_process_pars" : {"y_norm_fun" :  pre_process_fun ,  ### Before training  ##########################
+        , "pre_process_pars" : {
+              "y_norm_fun" :  pre_process_fun ,  ### Before training  ##########################
+              ### Pipeline for data processing ##############################
+              "pipe_list": [
+                  #### coly target prorcessing
+                  {"uri": "source/prepro.py::pd_coly",                 "pars": {}, "cols_family": "coly",       "cols_out": "coly",           "type": "coly"         },
 
+                  {"uri": "source/prepro.py::pd_colnum_bin",           "pars": {}, "cols_family": "colnum",     "cols_out": "colnum_bin",     "type": ""             },
+                  {"uri": "source/prepro.py::pd_colnum_binto_onehot",  "pars": {}, "cols_family": "colnum_bin", "cols_out": "colnum_onehot",  "type": ""             },
 
-        ### Pipeline for data processing ##############################
-        "pipe_list": [
-        #### coly target prorcessing
-        {"uri": "source/prepro.py::pd_coly",                 "pars": {}, "cols_family": "coly",       "cols_out": "coly",           "type": "coly"         },
+                  #### catcol INTO integer,   colcat into OneHot
+                  {"uri": "source/prepro.py::pd_colcat_bin",           "pars": {}, "cols_family": "colcat",     "cols_out": "colcat_bin",     "type": ""             },
+                  {"uri": "source/prepro.py::pd_colcat_to_onehot",     "pars": {}, "cols_family": "colcat_bin", "cols_out": "colcat_onehot",  "type": ""             },
 
-        {"uri": "source/prepro.py::pd_colnum_bin",           "pars": {}, "cols_family": "colnum",     "cols_out": "colnum_bin",     "type": ""             },
-        {"uri": "source/prepro.py::pd_colnum_binto_onehot",  "pars": {}, "cols_family": "colnum_bin", "cols_out": "colnum_onehot",  "type": ""             },
-
-        #### catcol INTO integer,   colcat into OneHot
-        {"uri": "source/prepro.py::pd_colcat_bin",           "pars": {}, "cols_family": "colcat",     "cols_out": "colcat_bin",     "type": ""             },
-        {"uri": "source/prepro.py::pd_colcat_to_onehot",     "pars": {}, "cols_family": "colcat_bin", "cols_out": "colcat_onehot",  "type": ""             },
-
-
-        ],
-               }
-        },
+             ],
+                                  }
+      },
 
       "compute_pars": { "metric_list": ["accuracy_score","average_precision_score"]
                         # ,"mlflow_pars" : {}   ### Not empty --> use mlflow
                       },
 
-      "data_pars": { "n_sample" : n_sample,
+      "data_pars": { 
+          "n_sample" : n_sample,
           "download_pars" : None,
+          ### Filter data rows   ##################################################################
+          "filter_pars": { "ymax" : 2 ,"ymin" : -1 },
 
           ### Raw data:  column input ##############################################################
           "cols_input_type" : cols_input_type_1,
 
 
           ### Model Input :  Merge family of columns   #############################################
-          "cols_model_group": [ "colnum_bin",
-                                "colcat_bin",
-                              ]
+          "cols_model_group": [ "colnum_bin", "colcat_bin",]
 
-      #### Model Input : Separate Category Sparse from Continuous : Aribitrary name is OK (!)
-     ,'cols_model_type': {
-         'continuous'   : [ 'colnum',   ],
-         'sparse'       : [ 'colcat_bin', 'colnum_bin',  ],
-         'my_split_23'  : [ 'colnum_bin',   ],
-      }   
-
-          ### Filter data rows   ##################################################################
-         ,"filter_pars": { "ymax" : 2 ,"ymin" : -1 }
+          #### Model Input : Separate Category Sparse from Continuous : Aribitrary name is OK (!)
+        ,'cols_model_type': {
+            'continuous'   : [ 'colnum',   ],
+            'sparse'       : [ 'colcat_bin', 'colnum_bin',  ],
+            'my_split_23'  : [ 'colnum_bin',   ],
+          }
 
          }
       }
@@ -175,24 +169,25 @@ from core_run import train_sampler
 
 
 
-
 def test_batch():
-   mdict = config_sampler()
-   
+   from core_run import  get_config_path, get_global_pars
+   mdict  = config_sampler()
+
+   nsample = 100
+   config  = ""
    ll = [
      ('CTGAN', { })
-
    ]
 
    for m in ll :
-     mdict['model_pars']['model_class'] = m[0]
-     mdict['model_pars']['model_pars']  = m[1]
+    mdict['model_pars']['model_class'] = m[0]
+    mdict['model_pars']['model_pars']  = m[1]
 
     config_uri, config_name = get_config_path(config)
 
     mdict = get_global_pars(  config_uri)
     m     = mdict['global_pars']
-    log(mdict)
+    print(mdict)
     from source import run_sampler
     run_sampler.run_train(config_name     =  None,
                         config_path       =  None,

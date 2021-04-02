@@ -4,9 +4,27 @@
 colnum, colcat, coldate transformation
 
 """
-import warnings
+import warnings, sys, gc, os, pandas as pd, json, copy, numpy as np
 warnings.filterwarnings('ignore')
-import sys, gc, os, pandas as pd, json, copy, numpy as np
+
+####################################################################################################
+try   : verbosity = int(json.load(open(os.path.dirname(os.path.abspath(__file__)) + "/../config.json", mode='r'))['verbosity'])
+except Exception as e : verbosity = 4
+#raise Exception(f"{e}")
+
+def log(*s):
+    print(*s, flush=True)
+
+def log2(*s):
+    if verbosity >= 2 : print(*s, flush=True)
+
+def log3(*s):
+    if verbosity >= 3 : print(*s, flush=True)
+
+def os_makedirs(dir_or_file):
+    if os.path.isfile(dir_or_file) :os.makedirs(os.path.dirname(os.path.abspath(dir_or_file)), exist_ok=True)
+    else : os.makedirs(os.path.abspath(dir_or_file), exist_ok=True)
+
 
 ####################################################################################################
 #### Add path for python import
@@ -16,32 +34,13 @@ from util_feature import  (save,  load, save_features, os_get_function_name,
 import util_feature
 
 ####################################################################################################
-####################################################################################################
-"""
-from util import logger_class
-logger = logger_class()
+def log4(*s, n=0, m=1):
+    if verbosity >= 4: 
+     print(*s,"\n", flush=True)
 
-def log(*s):
-    logger.log(*s, level=1)
-
-def log2(*s):
-    logger.log(*s, level=2)
-
-def log_pd(df, *s, n=0, m=1):
-    sjump = "\n" * m
-    log(sjump,  df.head(n))
-"""
-
-
-def log(*s, n=0, m=1):
-    sspace = "#" * n
-    sjump = "\n" * m
-    ### Implement pseudo Logging
-    print(sjump, sspace, *s, sspace, flush=True)
-
-def log2(*s, n=0, m=1):
-    print(*s, flush=True)
-
+def log4_pd(name, df, *s):
+    if verbosity >= 4: 
+       print("\n",name, df.head(3),  df.shape, df.reset_index().dtypes )
 
 def _pd_colnum(df, col, pars):
     colnum = col
@@ -49,12 +48,9 @@ def _pd_colnum(df, col, pars):
         df[x] = df[x].astype("float32")
     return df
 
-
 def _pd_colnum_fill_na_median(df, col, pars):
     for quant_col in col:
         df[quant_col].fillna((df[quant_col].median()), inplace=True)
-
-
 
 
 
@@ -209,7 +205,7 @@ def pd_colnum_normalize(df: pd.DataFrame, col: list=None, pars: dict=None):
     pars = { 'pipe_list': [ {'name': 'fillna', 'naval' : 0.0 }, {'name': 'minmax'} ]}
     dfnum_norm, colnum_norm = pd_colnum_normalize(df, colname=colnum,  pars=pars, suffix = "_norm",
                                                   return_val="dataframe,param")
-    log(colnum_norm)
+    log2(colnum_norm)
 
     # update: save col and colnum_norm in dictionary 
     col_pars = {}
@@ -321,17 +317,17 @@ def pd_colnum_bin(df: pd.DataFrame, col: list=None, pars: dict=None):
 
     path_pipeline  = pars.get('path_pipeline', False)
     colnum_binmap  = load(f'{path_pipeline}/colnum_binmap.pkl') if  path_pipeline else None
-    log(colnum_binmap)
+    log2(colnum_binmap)
     colnum = col
 
-    log("### colnum Map numerics to Category bin  ###########################################")
+    log2("### colnum Map numerics to Category bin  ###########################################")
     dfnum_bin, colnum_binmap = pd_colnum_tocat(df, colname=colnum, colexclude=None, colbinmap=colnum_binmap,
                                                bins=10, suffix="_bin", method="uniform",
                                                return_val="dataframe,param")
-    log(colnum_binmap)
+    log3(colnum_binmap)
     ### Renaming colunm_bin with suffix
     colnum_bin = [x + "_bin" for x in list(colnum_binmap.keys())]
-    log(colnum_bin)
+    log3(colnum_bin)
 
 
 
@@ -365,7 +361,7 @@ def pd_colnum_binto_onehot(df: pd.DataFrame, col: list=None, pars: dict=None):
     from util_feature import  pd_col_to_onehot
     dfnum_hot, colnum_onehot = pd_col_to_onehot(dfnum_bin[colnum_bin], colname=colnum_bin,
                                                 colonehot=colnum_onehot, return_val="dataframe,param")
-    log(colnum_onehot)
+    log2(colnum_onehot)
 
     if 'path_features_store' in pars :
         save_features(dfnum_hot, 'colnum_onehot', pars['path_features_store'])
@@ -406,7 +402,7 @@ def pd_colcat_to_onehot(df: pd.DataFrame, col: list=None, pars: dict=None):
     colcat = col
     dfcat_hot, colcat_onehot = util_feature.pd_col_to_onehot(df[colcat], colname=colcat,
                                                 colonehot=colcat_onehot, return_val="dataframe,param")
-    log(dfcat_hot[colcat_onehot].head(5))
+    log3(dfcat_hot[colcat_onehot].head(5))
 
     ######################################################################################
     if 'path_features_store' in pars :
@@ -420,8 +416,6 @@ def pd_colcat_to_onehot(df: pd.DataFrame, col: list=None, pars: dict=None):
      # 'colnum'        :  col ,    ###list
      'colcat_onehot' :  colcat_onehot       ### list
     }
-
-    print("ok ------------")
     return dfcat_hot, col_pars
 
 
@@ -439,7 +433,7 @@ def pd_colcat_bin(df: pd.DataFrame, col: list=None, pars: dict=None):
     colcat_bin = list(dfcat_bin.columns)
     ##### Colcat processing   ################################################################
     colcat_map = util_feature.pd_colcat_mapping(df, colcat)
-    log(df[colcat].dtypes, colcat_map)
+    log2(df[colcat].dtypes, colcat_map)
 
 
     if 'path_features_store' in pars :
@@ -475,8 +469,24 @@ def pd_colcross(df: pd.DataFrame, col: list=None, pars: dict=None):
 
     try :
        dfnum_hot = pars['dfnum_hot']
-       df_onehot = dfcat_hot.join(dfnum_hot, on=colid, how='left')
-    except :
+       dfnum_hot = dfnum_hot.drop_duplicates() ### Create bug if not unique ids
+       df_onehot = dfcat_hot.reset_index().join(dfnum_hot, on=[colid], how='left')
+       # df_onehot = pd.merge(dfcat_hot.reset_index(), dfnum_hot.reset_index() , on= [colid], how='left')
+
+       #log4_pd('df_onehot', df_onehot )
+       #log4(df_onehot.head(4).T )
+       assert set(dfcat_hot.index) == set(dfnum_hot.index), "Not equal index between dfcat_hot, dfnum_hot"
+       log4('index', colid, dfcat_hot.index)
+       log4(dfnum_hot.index)
+
+       # df_onehot = df_onehot.set_index(colid)
+       log4('colid', colid )
+       log4_pd('dfnum_hot', dfnum_hot )
+       log4_pd('dfcat_hot', dfcat_hot )
+
+
+    except Exception as e:
+       log4('error', e )
        df_onehot = copy.deepcopy(dfcat_hot)
 
     colcross_single = pars['colcross_single']
@@ -485,16 +495,22 @@ def pd_colcross(df: pd.DataFrame, col: list=None, pars: dict=None):
        colcross_single = load( pars['path_pipeline']  + f'/{prefix}_select.pkl')
        # pars_model      = load( pars['path_pipeline']  + f'/{prefix}_pars.pkl')
 
+    log4('colcross_single', colcross_single, len(colcross_single))
+
     colcross_single_onehot_select = []  ## Select existing columns
     for t in list(df_onehot.columns):
        for c1 in colcross_single:
            if c1 in t:
                colcross_single_onehot_select.append(t)
+    colcross_single_onehot_select = sorted(list(set(colcross_single_onehot_select)))
+    log4('colcross_single_select', colcross_single_onehot_select, len(colcross_single_onehot_select))
+
 
     df_onehot = df_onehot[colcross_single_onehot_select ]
+    log4_pd('df_onehot', df_onehot )
     dfcross_hot, colcross_pair = pd_feature_generate_cross(df_onehot, colcross_single_onehot_select,
                                                            **pars_model)
-    log(dfcross_hot.head(2).T)
+    log4_pd("dfcross_hot", dfcross_hot)
     colcross_pair_onehot = list(dfcross_hot.columns)
 
     model = None

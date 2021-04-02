@@ -208,3 +208,14 @@ mlflow_local.db
 /example/mfactor/Benchmark
 /example/mfactor
 /source/models/repo/TruncatedGaussianMixtureVAE/ztmp_checkpoint/model_.pth
+/source/__pycache__
+/source/models/repo/VAEM/data/bank/bank-additional
+/source/models/repo/VAEM/data/bank/bank
+/source/models/saved_weights/bank/checkpoint
+/source/models/saved_weights/bank
+/source/models/datasets/petfinder-mini
+/source/models/datasets
+/source/models/repo/RVAE_MixedTypes/data_simple/Adult/gaussian_m0s5_categorical_alpha0.0/10pc_rows_20pc_cols_run_1
+/source/models/repo/RVAE_MixedTypes/data_simple/Adult/gaussian_m0s5_categorical_alpha0.0
+/source/models/ztmp2/model_functions_3.py
+/source/models/ztmp_checkpoint

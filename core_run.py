@@ -164,7 +164,53 @@ def predict(config='', nsample=None):
     :param nsample:
     :return:
     """
+    config_uri, config_name = get_config_path(config)
 
+    mdict = get_global_pars( config_uri)
+    m     = mdict['global_pars']
+    log(mdict)
+
+    from source import run_inference
+    run_inference.run_predict(config_name = config_name,
+                              config_path = m['config_path'],
+                              n_sample    = nsample if nsample is not None else m['n_sample'],
+
+                              #### Optional
+                              path_data   = m['path_pred_data'],
+                              path_output = m['path_pred_output'],
+                              model_dict  = None
+                              )
+
+####################################################################################
+########## Train Sampler ###########################################################
+def train_sampler(config='', nsample=None):
+    """  train a model with  confi_name  and nsample
+    :param config:
+    :param nsample:
+    :return:
+    """
+    config_uri, config_name = get_config_path(config)
+
+    mdict = get_global_pars(  config_uri)
+    m     = mdict['global_pars']
+    log(mdict)
+    from source import run_sampler
+    run_sampler.run_train(config_name       =  config_name,
+                        config_path       =  m['config_path'],
+                        n_sample          =  nsample if nsample is not None else m['n_sample'],
+                        # use_mlmflow       =  False
+                        )
+
+
+
+########################################################################################
+####### tranform ########################################################################
+def transform(config='', nsample=None):
+    """
+    :param config:
+    :param nsample:
+    :return:
+    """
     config_uri, config_name = get_config_path(config)
 
     mdict = get_global_pars( config_uri)
@@ -182,30 +228,6 @@ def predict(config='', nsample=None):
                               path_output = m['path_pred_output'],
                               model_dict  = None
                               )
-
-####################################################################################
-########## Train ###################################################################
-def train_sampler(config='', nsample=None):
-    """  train a model with  confi_name  and nsample
-    :param config:
-    :param nsample:
-    :return:
-    """
-
-    config_uri, config_name = get_config_path(config)
-
-    mdict = get_global_pars(  config_uri)
-    m     = mdict['global_pars']
-    log(mdict)
-    from source import run_sampler
-    run_sampler.run_train(config_name       =  config_name,
-                        config_path       =  m['config_path'],
-                        n_sample          =  nsample if nsample is not None else m['n_sample'],
-                        # use_mlmflow       =  False
-                        )
-
-
-
 
 ########################################################################################
 ####### Inference ######################################################################

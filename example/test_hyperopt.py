@@ -1,7 +1,10 @@
 # pylint: disable=C0321,C0103,E1221,C0301,E1305,E1121,C0302,C0330
 # -*- coding: utf-8 -*-
 """
-Automatic Feature generator
+python  test_hyperopt.py  train   --nsample 200
+
+python  test_hyperopt.py  hyperparam  --ntrials 2
+
 
 """
 import warnings, copy, os, sys, numpy as np
@@ -68,71 +71,64 @@ cols_input_type_2 = {
     ,"coldate"  :  []
     ,"colcross" :  [ "Name", "Sex", "Ticket","Embarked","Pclass", "Age","SibSp", "Parch","Fare" ]
 
-    ,'colgen'  :   [   "Pclass", "Age","SibSp", "Parch","Fare" ]
+    ,'colgen'  :   [ "Pclass", "Age","SibSp", "Parch","Fare" ]
 }
 
 
 #################################################################################
+def post_process_fun(y): return  int(y)
+def pre_process_fun(y):  return  int(y)
+
 def titanic1(path_model_out="") :
-    """
-       One big dict
+    """ One big dict
     """
     config_name  = os_get_function_name()
     data_name    = "titanic"         ### in data/input/
     model_class  = 'LGBMClassifier'  ### ACTUAL Class name for model_sklearn.py
     n_sample     = 500
 
-    def post_process_fun(y):
-     return  int(y)
+    model_dict = {
+    'model_pars': {
+         'model_class': model_class
+        ,'model_pars' : {'objective': 'binary', 'n_estimators':10,
+                        }
 
-    def pre_process_fun(y):
-     return  int(y)
-
-
-    model_dict = {'model_pars': {
-    ### LightGBM API model   ######################################
-     'model_class': model_class
-    ,'model_pars' : {'objective': 'binary', 'n_estimators':100,
-                    }
-
-    , 'post_process_fun' : post_process_fun
-    , 'pre_process_pars' : {'y_norm_fun' :  pre_process_fun ,
+        , 'post_process_fun' : post_process_fun
+        , 'pre_process_pars' : {'y_norm_fun' :  pre_process_fun ,
 
 
-    ### Pipeline for data processing ##############################
-    'pipe_list': [
-        {'uri': 'source/prepro.py::pd_coly',                 'pars': {}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         },
-        {'uri': 'source/prepro.py::pd_colnum_bin',           'pars': {}, 'cols_family': 'colnum',     'cols_out': 'colnum_bin',     'type': ''             },
+        ### Pipeline for data processing ##############################
+        'pipe_list': [
+            {'uri': 'source/prepro.py::pd_coly',                 'pars': {}, 'cols_family': 'coly',       'cols_out': 'coly',           'type': 'coly'         },
+            {'uri': 'source/prepro.py::pd_colnum_bin',           'pars': {}, 'cols_family': 'colnum',     'cols_out': 'colnum_bin',     'type': ''             },
 
-        # {'uri': 'source/prepro.py::pd_colnum_binto_onehot',  'pars': {}, 'cols_family': 'colnum_bin', 'cols_out': 'colnum_onehot',  'type': ''             },
-        {'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             },
+            # {'uri': 'source/prepro.py::pd_colnum_binto_onehot',  'pars': {}, 'cols_family': 'colnum_bin', 'cols_out': 'colnum_onehot',  'type': ''             },
+            {'uri': 'source/prepro.py::pd_colcat_bin',           'pars': {}, 'cols_family': 'colcat',     'cols_out': 'colcat_bin',     'type': ''             },
 
-        # {'uri': 'source/prepro.py::pd_colcat_to_onehot',     'pars': {}, 'cols_family': 'colcat_bin', 'cols_out': 'colcat_onehot',  'type': ''             },
-        # {'uri': 'source/prepro.py::pd_colcross',             'pars': {}, 'cols_family': 'colcross',   'cols_out': 'colcross_pair_onehot',  'type': 'cross'},
-    ],
-    }
-    },
+            # {'uri': 'source/prepro.py::pd_colcat_to_onehot',     'pars': {}, 'cols_family': 'colcat_bin', 'cols_out': 'colcat_onehot',  'type': ''             },
+            # {'uri': 'source/prepro.py::pd_colcross',             'pars': {}, 'cols_family': 'colcross',   'cols_out': 'colcross_pair_onehot',  'type': 'cross'},
+        ],
+        }
+  },
 
   'compute_pars': { 'metric_list': ['accuracy_score','average_precision_score']
                   },
 
   'data_pars': { 'n_sample' : n_sample,
       'cols_input_type' : cols_input_type_2,
-      ### family of columns for MODEL  ########################################################
-      #  "colnum", "colnum_bin", "colnum_onehot", "colnum_binmap",  #### Colnum columns
-      #  "colcat", "colcat_bin", "colcat_onehot", "colcat_bin_map",  #### colcat columns
-      #  'colcross_single_onehot_select', "colcross_pair_onehot",  'colcross_pair',  #### colcross columns
-      #  'coldate',
-      #  'coltext',
       'cols_model_group': [ 'colnum',  ### should be optional 'colcat'
                             'colcat_bin',
-                          ]
+                          ],
+      'cols_model_type' : {
+         'continuous'   : [ 'colnum',   ],
+         'sparse'       : [ 'colcat_bin', 'colnum_bin',  ],
+      }
 
       ### Filter data rows   ##################################################################
      ,'filter_pars': { 'ymax' : 2 ,'ymin' : -1 }
 
          }
-      }
+  }
 
     ##### Filling Global parameters    ########################################################
     model_dict        = global_pars_update(model_dict, data_name, config_name )
@@ -163,7 +159,6 @@ def hyperparam(config_full="",
                          'n_estimators':   ('int', 20, 100),
                          'learning_rate' : ('log_uniform', 0.0001, 0.1),
                          'reg_alpha ' :    ('uniform', 0.0001, 0.01),  ### l1 reg
-
                        },
         },
 
@@ -204,7 +199,7 @@ def hyperparam_wrapper(config_full="",
     ##############################################################################
     ####### model_dict initial dict of params  ###################################
     config_name = config_full.split("::")[-1]
-    mdict       = load_function_uri(config_full) #titanic1()
+    mdict       = load_function_uri(config_full) #titanic1() dictionnary
     mdict       = mdict()
 
     ####### Objective   ##########################################################
@@ -264,13 +259,6 @@ from core_run import predict
 
 ###########################################################################################################
 ###########################################################################################################
-"""
-python  test_hyperopt.py  train   --nsample 200
-
-python  test_hyperopt.py  hyperparam  --ntrials 2
-
-
-"""
 if __name__ == "__main__":
     import fire
     fire.Fire()

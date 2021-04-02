@@ -60,10 +60,9 @@ def global_pars_update(model_dict,  data_name, config_name):
 ##### Params########################################################################
 config_default   = "config1"    ### name of function which contains data configuration
 
-
 cols_input_type_1 = {
      "coly"   :   "sales"
-    ,"colid"  :   "id_date"   ### used for JOIN tables, duplicate date, virtual id
+    ,"colid"  :   "id_date"   ### used for JOIN tables, duplicate date
     ,"colcat" :   ["store", "item" ]
     ,"colnum" :   []
     ,"coltext" :  []
@@ -169,7 +168,7 @@ def pd_dsa2_custom(df: pd.DataFrame, col: list=None, pars: dict=None):
     """
     prefix = "tseries_feat"  ### Used acolumn index
     #### Inference time LOAD previous pars  ###########################################
-    from source.prepro import prepro_load, prepro_save
+    from prepro import prepro_load, prepro_save
     prepro, pars_saved, cols_saved = prepro_load(prefix, pars)
 
 
@@ -194,6 +193,15 @@ def pd_dsa2_custom(df: pd.DataFrame, col: list=None, pars: dict=None):
         df_new    = pd.concat([df_new , dfi], axis=1)
 
     else :  ### predict time
+        """
+          y is NOT provided, need to calculate y based on past values.
+          Auto-regressive feature engineering.
+          
+
+
+        """
+
+
         pars = pars_saved  ##merge
     ###################################################################################
 
@@ -210,20 +218,6 @@ def pd_dsa2_custom(df: pd.DataFrame, col: list=None, pars: dict=None):
     return df_new, col_pars
 
 
-def test(path_data="data/input/tseries_demand/train/features.zip"):
-    from source.util_feature import pd_read_file, log
-    try: 
-        train_df     = pd_read_file( path_data)
-        if train_df.empty == True:
-            raise RuntimeError('DataFrame is empty')
-    except Exception as e:
-            log("Error", "Empty DataFrame read from path:", path_data)
-            sys.exit(1)
-    log("Testing preprocessing functions...")
-    df_preprocessed, columns = pd_dsa2_custom(train_df, 
-                                               col  = ['date', 'item', 'store', 'sales'], 
-                                               pars = {'coldate': 'date', 'dfy':'id_date', 'coly': 'sales'})
-    log("Data preprocessed succesfully with features: " ,columns)
 
 
 
@@ -257,10 +251,9 @@ from core_run import predict
 ###########################################################################################################
 ###########################################################################################################
 if __name__ == "__main__":
-    # python tseries.py test 
+    d = { "data_profile": data_profile,  "train" : train, "predict" : predict, "config" : config_default }
     import fire
-    fire.Fire()
-    
+    fire.Fire(d)
     
 
 

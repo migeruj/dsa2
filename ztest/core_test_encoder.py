@@ -516,8 +516,6 @@ def pd_col_amyfun(df: pd.DataFrame, col: list=None, pars: dict=None):
     return df_new, col_pars
 
 
-
-
 def get_test_data(name='boston'):
     import pandas as pd
     if name == 'boston' :
@@ -537,7 +535,6 @@ def check1():
     pars = { 'path_pipeline_export' : ''
 
     }
-
 
     ############################################################
     for name in  ['boston'] :

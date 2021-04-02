@@ -232,6 +232,27 @@ if __name__ == "__main__":
 
 
 
+def eval_dict(src, dst={}):
+    import pandas as pd
+    for key, value in src.items():
+        if isinstance(value, dict):
+            node = dst.setdefault(key, {})
+            eval_dict(value, node)
+        else:
+            if "@lazy" not in key :
+               dst[key] = value
+            else :
+                key2 = key.split(":")[-1]
+                if 'pandas.read_csv' in key :
+                    dst[key2] = pd.read_csv(value)
+                elif 'pandas.read_parquet' in key :
+                    dst[key2] = pd.read_parquet(value)
+    return dst
+
+
+
+
+
 """
 ### Distributed
 https://optuna.readthedocs.io/en/latest/tutorial/distributed.html

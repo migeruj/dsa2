@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 
-  python example/mkeras.py  train    --config config1
-  python mkeras.py  predict  > zlog/log_titanic_predict.txt 2>&1
+  python example/test_mkeras.py  train    --config config1
 
-  Bug on dimenson
 
 """
 import warnings, copy, os, sys
@@ -63,7 +61,6 @@ def global_pars_update(model_dict,  data_name, config_name):
 ##### Params########################################################################
 config_default   = "config1"    ### name of function which contains data configuration
 
-
 # data_name    = "titanic"     ### in data/input/
 cols_input_type_1 = {
      "coly"   :   "Survived"
@@ -82,7 +79,7 @@ def config1() :
        ONE SINGLE DICT Contains all needed informations for  used for titanic classification task
     """
     data_name    = "titanic"         ### in data/input/
-    model_class  = "source/models/keras_widedeep.py"  ### ACTUAL Class name for
+    model_class  = "source/models/keras_widedeep_dense.py"  ### ACTUAL Class name for
     n_sample     = 1000
 
     def post_process_fun(y):   ### After prediction is done
